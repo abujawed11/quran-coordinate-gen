@@ -81,6 +81,11 @@ export default function App() {
     setSelectedId(dup.uid);
   };
 
+  const handleClearAll = () => {
+    setRectangles([]);
+    setSelectedId(null);
+  };
+
   // ── Export ──────────────────────────────────────────────────────────────────
 
   const handleExport = () => {
@@ -136,6 +141,7 @@ export default function App() {
         onDelete={handleRectDelete}
         onDuplicate={handleRectDuplicate}
         onExport={handleExport}
+        onClearAll={handleClearAll}
       />
     </div>
   );

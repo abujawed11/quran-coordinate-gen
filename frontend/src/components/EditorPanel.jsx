@@ -9,7 +9,7 @@
 //   onDuplicate – () => void
 //   onExport    – () => void
 
-export default function EditorPanel({ rect, onUpdate, onDelete, onDuplicate, onExport }) {
+export default function EditorPanel({ rect, onUpdate, onDelete, onDuplicate, onExport, onClearAll }) {
   // A single numeric field row
   const NumField = ({ label, fieldKey, min = 0, max }) => (
     <div className="control-group">
@@ -61,10 +61,18 @@ export default function EditorPanel({ rect, onUpdate, onDelete, onDuplicate, onE
         </>
       )}
 
-      {/* Export always visible at the bottom */}
+      {/* Export + Clear — always visible at the bottom */}
       <div className="panel-footer">
         <button className="export-btn" onClick={onExport}>
           Export JSON
+        </button>
+        <button
+          className="clear-btn"
+          onClick={() => {
+            if (window.confirm("Clear all boxes on this page?")) onClearAll();
+          }}
+        >
+          Clear All
         </button>
       </div>
     </aside>

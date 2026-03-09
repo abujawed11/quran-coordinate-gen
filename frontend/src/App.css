@@ -339,3 +339,23 @@ body {
   background: #166534;
   color: #fff;
 }
+
+.clear-btn {
+  width: 100%;
+  margin-top: 6px;
+  padding: 8px;
+  background: transparent;
+  color: #666;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.clear-btn:hover {
+  background: #3f0e0e;
+  color: #fca5a5;
+  border-color: #5f1e1e;
+}
