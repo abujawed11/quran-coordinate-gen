@@ -1,56 +1,212 @@
 * {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  margin: 0;
   font-family: Arial, sans-serif;
-  background: #f0f0f0;
+  background: #0d0d0d;
+  color: #e0e0e0;
 }
 
-/* ── Layout ──────────────────────────────────────────────── */
+/* ── 3-column shell ──────────────────────────────────────────────────────────── */
 
 .app-shell {
   display: flex;
   min-height: 100vh;
 }
 
-/* ── Left Sidebar ────────────────────────────────────────── */
+/* ── Left Sidebar ─────────────────────────────────────────────────────────────  */
 
 .sidebar {
-  width: 220px;
+  width: 200px;
   flex-shrink: 0;
-  background: #111;
-  color: #fff;
-  padding: 20px 16px;
-  border-right: 1px solid #2a2a2a;
+  background: #141414;
+  border-right: 1px solid #252525;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 0;
+  overflow-y: auto;
 }
 
 .sidebar h1 {
-  margin: 0 0 20px;
-  font-size: 18px;
-  line-height: 1.4;
+  font-size: 15px;
+  font-weight: 700;
   color: #f5d90a;
+  margin-bottom: 16px;
+  line-height: 1.3;
 }
 
-.hint {
-  margin: 4px 0;
-  font-size: 13px;
-  color: #aaa;
-  line-height: 1.5;
+/* ── Sidebar sections ──────────────────────────────────────────────────────── */
+
+.sidebar-section {
+  border-top: 1px solid #252525;
+  padding: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
+
+.section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+/* ── Shared form controls ──────────────────────────────────────────────────── */
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.control-group.indent {
+  padding-left: 18px;
+}
+
+.control-group label,
+.editor-panel .section-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.control-group input[type="number"],
+.control-group input[type="text"] {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 14px;
+  background: #1e1e1e;
+  border: 1px solid #303030;
+  color: #e0e0e0;
+  border-radius: 4px;
+  outline: none;
+}
+
+.control-group input:focus {
+  border-color: #60a5fa;
+}
+
+/* ── Toggle checkboxes ─────────────────────────────────────────────────────── */
+
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #bbb;
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #60a5fa;
+  cursor: pointer;
+}
+
+/* ── Line guide controls ───────────────────────────────────────────────────── */
+
+.guide-input-row {
+  display: flex;
+  gap: 6px;
+}
+
+.guide-input-row input {
+  flex: 1;
+  padding: 5px 7px;
+  font-size: 13px;
+  background: #1e1e1e;
+  border: 1px solid #303030;
+  color: #e0e0e0;
+  border-radius: 4px;
+  outline: none;
+  min-width: 0;
+}
+
+.guide-input-row input:focus {
+  border-color: #60a5fa;
+}
+
+.add-btn {
+  padding: 5px 10px;
+  background: #1d4ed8;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.add-btn:hover {
+  background: #2563eb;
+}
+
+.guide-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.guide-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.guide-y {
+  font-size: 12px;
+  font-family: monospace;
+  color: #38bdf8;
+}
+
+.guide-remove {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 16px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.guide-remove:hover {
+  color: #ef4444;
+}
+
+.muted {
+  font-size: 12px;
+  color: #444;
+}
+
+/* ── Box count ─────────────────────────────────────────────────────────────── */
 
 .box-count {
-  margin-top: 8px;
-  font-size: 13px;
+  margin-top: auto;
+  padding-top: 12px;
+  font-size: 12px;
   color: #60a5fa;
   font-weight: 600;
 }
 
-/* ── Canvas Area ─────────────────────────────────────────── */
+/* ── Canvas area ───────────────────────────────────────────────────────────── */
 
 .canvas-area {
   flex: 1;
@@ -59,14 +215,15 @@ body {
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  background: #111;
 }
 
 .canvas-wrapper {
   display: inline-block;
   background: white;
-  border: 1px solid #ccc;
-  padding: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #333;
+  padding: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 }
 
 .image-loading {
@@ -75,129 +232,110 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fafafa;
-  color: #888;
-  border: 1px dashed #ccc;
-  font-size: 16px;
+  background: #1a1a1a;
+  color: #555;
+  border: 1px dashed #333;
+  font-size: 15px;
 }
 
-/* ── Right Editor Panel ──────────────────────────────────── */
+/* ── Right Editor Panel ────────────────────────────────────────────────────── */
 
 .editor-panel {
-  width: 220px;
+  width: 200px;
   flex-shrink: 0;
-  background: #1a1a1a;
-  color: #fff;
-  padding: 20px 16px;
-  border-left: 1px solid #2a2a2a;
+  background: #141414;
+  border-left: 1px solid #252525;
+  padding: 16px 14px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  overflow-y: auto;
 }
 
 .editor-panel h2 {
-  margin: 0 0 12px;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 700;
   color: #f5d90a;
-  border-bottom: 1px solid #333;
   padding-bottom: 10px;
+  border-bottom: 1px solid #252525;
+  margin-bottom: 4px;
+}
+
+.editor-panel .section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #555;
+  margin-top: 4px;
 }
 
 .no-selection {
-  font-size: 13px;
-  color: #777;
-  margin: 0;
+  font-size: 12px;
+  color: #555;
 }
 
 .uid-display {
   font-size: 11px;
-  color: #666;
-  margin-bottom: 4px;
+  color: #444;
   font-family: monospace;
 }
 
-/* ── Shared form controls ────────────────────────────────── */
+/* ── Action buttons ────────────────────────────────────────────────────────── */
 
-.control-group {
+.btn-row {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  margin-top: 6px;
 }
 
-.control-group label {
+.action-btn {
+  flex: 1;
+  padding: 8px 4px;
   font-size: 12px;
   font-weight: 600;
-  color: #aaa;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: opacity 0.15s;
 }
 
-.control-group input {
-  width: 100%;
-  padding: 8px 10px;
-  font-size: 15px;
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  color: #fff;
-  border-radius: 4px;
-  outline: none;
-  transition: border-color 0.15s;
+.action-btn:hover {
+  opacity: 0.85;
 }
 
-.control-group input:focus {
-  border-color: #60a5fa;
+.dup-btn {
+  background: #1e3a5f;
+  color: #93c5fd;
 }
 
-/* ── Coordinate readout ──────────────────────────────────── */
-
-.coord-display {
-  background: #111;
-  border: 1px solid #2a2a2a;
-  border-radius: 6px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 4px;
-}
-
-.coord-row {
-  display: flex;
-  gap: 8px;
-  align-items: baseline;
-}
-
-.coord-label {
-  font-size: 11px;
-  color: #666;
-  text-transform: uppercase;
-  width: 14px;
-}
-
-.coord-value {
-  font-size: 13px;
-  color: #e0e0e0;
-  font-family: monospace;
-  flex: 1;
-}
-
-/* ── Delete button ───────────────────────────────────────── */
-
-.delete-btn {
-  margin-top: auto;
-  padding: 10px;
-  background: #7f1d1d;
+.del-btn {
+  background: #5f1e1e;
   color: #fca5a5;
-  border: 1px solid #991b1b;
+}
+
+/* ── Export button ─────────────────────────────────────────────────────────── */
+
+.panel-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid #252525;
+}
+
+.export-btn {
+  width: 100%;
+  padding: 10px;
+  background: #14532d;
+  color: #86efac;
+  border: 1px solid #166534;
   border-radius: 6px;
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
   transition: background 0.15s;
-  width: 100%;
 }
 
-.delete-btn:hover {
-  background: #991b1b;
+.export-btn:hover {
+  background: #166534;
   color: #fff;
 }

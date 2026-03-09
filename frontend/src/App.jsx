@@ -1,220 +1,66 @@
-import { Fragment, useMemo, useState } from "react";
+import { useState } from "react";
 import "./App.css";
-import { Stage, Layer, Image as KonvaImage, Rect, Text } from "react-konva";
-import useImage from "use-image";
 
-// Simple incrementing UID — stable across re-renders
-let _uidCounter = 1;
-function nextUid() {
-  return _uidCounter++;
-}
+import DrawingCanvas from "./components/DrawingCanvas";
+import EditorPanel   from "./components/EditorPanel";
+import LeftSidebar   from "./components/LeftSidebar";
+import { exportGroupedJSON, downloadJSON, nextUid } from "./utils/rectUtils";
 
-// ─── PageImage ────────────────────────────────────────────────────────────────
-// Renders the Konva stage + image + all rectangles with labels.
-// Rectangle state lives in App; this component only handles drawing interaction.
-
-function PageImage({ src, width, rectangles, selectedId, onRectCreate, onRectSelect }) {
-  const [image] = useImage(src);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [newRect, setNewRect] = useState(null);
-
-  const dimensions = useMemo(() => {
-    if (!image) return { width: 0, height: 0, scale: 1 };
-    const scale = width / image.width;
-    return { width, height: image.height * scale, scale };
-  }, [image, width]);
-
-  if (!image) return <div className="image-loading">Loading image...</div>;
-
-  const handleMouseDown = (e) => {
-    // Don't start drawing if the user clicked an existing rectangle
-    if (e.target.getClassName() === "Rect") return;
-
-    const pos = e.target.getStage().getPointerPosition();
-    setIsDrawing(true);
-    setNewRect({ x: pos.x, y: pos.y, width: 0, height: 0 });
-    onRectSelect(null); // clear selection when drawing
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDrawing) return;
-    const pos = e.target.getStage().getPointerPosition();
-    setNewRect((prev) => ({
-      ...prev,
-      width: pos.x - prev.x,
-      height: pos.y - prev.y,
-    }));
-  };
-
-  const handleMouseUp = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-
-    // Ignore tiny accidental clicks
-    if (newRect && Math.abs(newRect.width) > 5 && Math.abs(newRect.height) > 5) {
-      onRectCreate({
-        uid: nextUid(),
-        surah: 1,
-        ayah: 1,
-        word: 1,
-        x: newRect.x,
-        y: newRect.y,
-        width: newRect.width,
-        height: newRect.height,
-      });
-    }
-    setNewRect(null);
-  };
-
-  return (
-    <Stage
-      width={dimensions.width}
-      height={dimensions.height}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-    >
-      <Layer>
-        <KonvaImage image={image} width={dimensions.width} height={dimensions.height} />
-
-        {/* Saved rectangles with labels */}
-        {rectangles.map((rect) => {
-          const isSelected = rect.uid === selectedId;
-          const label = `${rect.surah}:${rect.ayah}:${rect.word}`;
-          const color = isSelected ? "#facc15" : "#ef4444";
-
-          return (
-            <Fragment key={rect.uid}>
-              <Text
-                x={rect.x + 2}
-                y={rect.y - 17}
-                text={label}
-                fontSize={12}
-                fontStyle="bold"
-                fill={color}
-              />
-              <Rect
-                x={rect.x}
-                y={rect.y}
-                width={rect.width}
-                height={rect.height}
-                stroke={color}
-                strokeWidth={isSelected ? 3 : 2}
-                onClick={() => onRectSelect(rect.uid)}
-              />
-            </Fragment>
-          );
-        })}
-
-        {/* In-progress rectangle while drawing */}
-        {newRect && (
-          <Rect
-            x={newRect.x}
-            y={newRect.y}
-            width={newRect.width}
-            height={newRect.height}
-            stroke="#60a5fa"
-            strokeWidth={2}
-            dash={[6, 3]}
-          />
-        )}
-      </Layer>
-    </Stage>
-  );
-}
-
-// ─── EditorPanel ──────────────────────────────────────────────────────────────
-// Right sidebar. Shows metadata fields for the selected rectangle.
-
-function EditorPanel({ rect, onUpdate, onDelete }) {
-  if (!rect) {
-    return (
-      <aside className="editor-panel">
-        <h2>Properties</h2>
-        <p className="no-selection">Click a box to edit.</p>
-      </aside>
-    );
-  }
-
-  return (
-    <aside className="editor-panel">
-      <h2>Properties</h2>
-
-      <div className="uid-display">UID: {rect.uid}</div>
-
-      <div className="control-group">
-        <label>Surah</label>
-        <input
-          type="number"
-          min="1"
-          max="114"
-          value={rect.surah}
-          onChange={(e) => onUpdate({ surah: Number(e.target.value) || 1 })}
-        />
-      </div>
-
-      <div className="control-group">
-        <label>Ayah</label>
-        <input
-          type="number"
-          min="1"
-          value={rect.ayah}
-          onChange={(e) => onUpdate({ ayah: Number(e.target.value) || 1 })}
-        />
-      </div>
-
-      <div className="control-group">
-        <label>Word</label>
-        <input
-          type="number"
-          min="1"
-          value={rect.word}
-          onChange={(e) => onUpdate({ word: Number(e.target.value) || 1 })}
-        />
-      </div>
-
-      <div className="coord-display">
-        <div className="coord-row">
-          <span className="coord-label">x</span>
-          <span className="coord-value">{Math.round(rect.x)}</span>
-          <span className="coord-label">y</span>
-          <span className="coord-value">{Math.round(rect.y)}</span>
-        </div>
-        <div className="coord-row">
-          <span className="coord-label">w</span>
-          <span className="coord-value">{Math.round(rect.width)}</span>
-          <span className="coord-label">h</span>
-          <span className="coord-value">{Math.round(rect.height)}</span>
-        </div>
-      </div>
-
-      <button className="delete-btn" onClick={onDelete}>
-        Delete Box
-      </button>
-    </aside>
-  );
-}
+// ─── Default drawing settings ─────────────────────────────────────────────────
+const DEFAULT_DRAW_SETTINGS = {
+  fixedHeight:      true,   // use a fixed box height instead of free drag
+  fixedHeightValue: 61,     // default line height in px (canvas coords)
+  snapToLines:      false,  // snap the box's Y to the nearest line guide
+  showGuides:       true,   // render guide lines on the canvas
+};
 
 // ─── App ──────────────────────────────────────────────────────────────────────
-// Root component. Owns all rectangle state and selection state.
+// Owns all state. Passes focused slices down to each child.
+//
+// Rectangle data shape:
+//   { uid, surah, ayah, x, y, w, h }
+//
+// All coordinates are canvas-space integers.
+// Original-image conversion (divide by scale) can be added in exportGroupedJSON
+// or as a post-processing step when the image dimensions are known.
 
 export default function App() {
-  const [pageNumber, setPageNumber] = useState(1);
-  const [rectangles, setRectangles] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  const [pageNumber,   setPageNumber]   = useState(1);
+  const [rectangles,   setRectangles]   = useState([]);
+  const [selectedId,   setSelectedId]   = useState(null);
+  const [drawSettings, setDrawSettings] = useState(DEFAULT_DRAW_SETTINGS);
+  const [lineGuides,   setLineGuides]   = useState([]);
+
+  // Tracks the last-used surah/ayah so new boxes default to the same ayah.
+  // This is ideal for Quran layout: draw all lines of one ayah, then increment.
+  const [lastLabel, setLastLabel] = useState({ surah: 1, ayah: 1 });
 
   const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
 
   const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
 
+  // ── Rectangle CRUD ──────────────────────────────────────────────────────────
+
   const handleRectCreate = (rect) => {
-    setRectangles((prev) => [...prev, rect]);
-    setSelectedId(rect.uid); // auto-select the newly drawn box
+    // Attach the current label defaults; user can edit after drawing
+    const newRect = { ...rect, surah: lastLabel.surah, ayah: lastLabel.ayah };
+    setRectangles((prev) => [...prev, newRect]);
+    setSelectedId(newRect.uid);
   };
 
   const handleRectUpdate = (changes) => {
     setRectangles((prev) =>
       prev.map((r) => (r.uid === selectedId ? { ...r, ...changes } : r))
+    );
+    // Mirror surah/ayah changes into lastLabel so the next drawn box inherits them
+    if (changes.surah !== undefined || changes.ayah !== undefined) {
+      setLastLabel((prev) => ({ ...prev, ...changes }));
+    }
+  };
+
+  const handleRectMove = (uid, { x, y }) => {
+    setRectangles((prev) =>
+      prev.map((r) => (r.uid === uid ? { ...r, x, y } : r))
     );
   };
 
@@ -223,49 +69,73 @@ export default function App() {
     setSelectedId(null);
   };
 
+  const handleRectDuplicate = () => {
+    if (!selectedRect) return;
+    const dup = {
+      ...selectedRect,
+      uid: nextUid(),
+      x: selectedRect.x + 10,
+      y: selectedRect.y + selectedRect.h + 4, // place just below the original
+    };
+    setRectangles((prev) => [...prev, dup]);
+    setSelectedId(dup.uid);
+  };
+
+  // ── Export ──────────────────────────────────────────────────────────────────
+
+  const handleExport = () => {
+    const grouped = exportGroupedJSON(rectangles);
+    downloadJSON(grouped, `page-${String(pageNumber).padStart(3, "0")}.json`);
+  };
+
+  // ── Line guides ─────────────────────────────────────────────────────────────
+
+  const handleAddGuide = (y) =>
+    setLineGuides((prev) => [...prev, y].sort((a, b) => a - b));
+
+  const handleRemoveGuide = (i) =>
+    setLineGuides((prev) => prev.filter((_, idx) => idx !== i));
+
+  // ────────────────────────────────────────────────────────────────────────────
+
   return (
     <div className="app-shell">
-      {/* Left sidebar — page controls */}
-      <aside className="sidebar">
-        <h1>Quran Coordinate Generator</h1>
+      {/* Left: page controls + drawing settings + guide manager */}
+      <LeftSidebar
+        pageNumber={pageNumber}
+        onPageChange={setPageNumber}
+        drawSettings={drawSettings}
+        onDrawSettingsChange={setDrawSettings}
+        lineGuides={lineGuides}
+        onAddGuide={handleAddGuide}
+        onRemoveGuide={handleRemoveGuide}
+        boxCount={rectangles.length}
+      />
 
-        <div className="control-group">
-          <label>Page Number</label>
-          <input
-            type="number"
-            min="1"
-            max="610"
-            value={pageNumber}
-            onChange={(e) => setPageNumber(Number(e.target.value) || 1)}
-          />
-        </div>
-
-        <p className="hint">Drag to draw a box. Click a box to select it.</p>
-
-        <div className="box-count">
-          {rectangles.length} box{rectangles.length !== 1 ? "es" : ""} on this page
-        </div>
-      </aside>
-
-      {/* Center — Konva canvas */}
+      {/* Center: Konva canvas */}
       <main className="canvas-area">
         <div className="canvas-wrapper">
-          <PageImage
+          <DrawingCanvas
             src={pageImageSrc}
             width={900}
             rectangles={rectangles}
             selectedId={selectedId}
+            drawSettings={drawSettings}
+            lineGuides={lineGuides}
             onRectCreate={handleRectCreate}
             onRectSelect={setSelectedId}
+            onRectMove={handleRectMove}
           />
         </div>
       </main>
 
-      {/* Right sidebar — metadata editor */}
+      {/* Right: metadata editor + export */}
       <EditorPanel
         rect={selectedRect}
         onUpdate={handleRectUpdate}
         onDelete={handleRectDelete}
+        onDuplicate={handleRectDuplicate}
+        onExport={handleExport}
       />
     </div>
   );
