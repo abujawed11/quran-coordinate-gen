@@ -64,6 +64,9 @@ export default function App() {
   // Guide snapshot for the current page — null means no snapshot saved yet
   const [guideSnapshot,   setGuideSnapshot]   = useState(() => loadGuideSnapshot(1));
 
+  // Cross-page clipboard: survives page switches
+  const clipboardRef = useRef([]);
+
   const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
   const selectedRects = rectangles.filter((r) => selectedIds.includes(r.uid));
 
@@ -106,6 +109,35 @@ export default function App() {
     savePageData(pageNumber, { rectangles, yGuides, xGuides });
     setSavedPages(getSavedPageNumbers());
   }, [rectangles, yGuides, xGuides, pageNumber]);
+
+  // ── copy / paste (Ctrl+C / Ctrl+V) ──────────────────────────────────────────
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      // Don't fire while typing in an input/textarea
+      const tag = document.activeElement?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+
+      if (e.ctrlKey && e.key === "c") {
+        if (selectedIds.length === 0) return;
+        clipboardRef.current = rectangles.filter((r) => selectedIds.includes(r.uid));
+      }
+
+      if (e.ctrlKey && e.key === "v") {
+        if (clipboardRef.current.length === 0) return;
+        const pasted = clipboardRef.current.map((r) => ({
+          ...r,
+          uid: nextUid(),
+          x: r.x + 10,
+          y: r.y + 10,
+        }));
+        setRectangles((prev) => [...prev, ...pasted]);
+        setSelectedIds(pasted.map((p) => p.uid));
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selectedIds, rectangles]);
 
   // ── page change ──────────────────────────────────────────────────────────────
   const handlePageChange = (newPage) => {
