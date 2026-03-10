@@ -14,6 +14,31 @@ const DEFAULT_DRAW_SETTINGS = {
   showGuides:       true,
 };
 
+const DEFAULT_GUIDE_SETTINGS = {
+  topMarginPct:    8,     // % of displayHeight to treat as header (skip)
+  bottomMarginPct: 6,     // % of displayHeight to treat as footer (skip)
+  autoOnLoad:      false, // auto-generate guides when switching to a new page
+};
+
+// ── Guide generation algorithm ────────────────────────────────────────────────
+// Produces 15 Y values in DISPLAY coordinates.
+// Each value is the TOP edge of a text line — consistent with how box-snapping
+// works (mousedown snaps the box's top-left to the nearest guide).
+//
+// textTop    = displayH × (topPct / 100)
+// textBottom = displayH × (1 − bottomPct / 100)
+// step       = (textBottom − textTop) / 15
+// guideY[i]  = round(textTop + i × step)   for i = 0 … 14
+
+export function computeLineGuides(displayH, topPct, bottomPct) {
+  const textTop    = Math.round(displayH * (topPct    / 100));
+  const textBottom = Math.round(displayH * (1 - bottomPct / 100));
+  const step       = (textBottom - textTop) / 15;
+  return Array.from({ length: 15 }, (_, i) => Math.round(textTop + i * step));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function App() {
   const [pageNumber,   setPageNumber]   = useState(1);
   const [rectangles,   setRectangles]   = useState([]);
@@ -23,16 +48,31 @@ export default function App() {
   const [xGuides,      setXGuides]      = useState([]);
   const [lastLabel,    setLastLabel]    = useState({ surah: 1, ayah: 1 });
 
-  // Populated by DrawingCanvas when image loads: { originalWidth, originalHeight,
-  // displayWidth, displayHeight, scaleX, scaleY }
+  // Populated by DrawingCanvas when image loads:
+  // { originalWidth, originalHeight, displayWidth, displayHeight, scaleX, scaleY }
   const [imageInfo, setImageInfo] = useState(null);
 
-  // Sorted list of page numbers that have saved boxes in localStorage
+  // Guide-generation settings — persisted globally (not per page)
+  const [guideSettings, setGuideSettings] = useState(() => {
+    try {
+      const s = localStorage.getItem("quran-guide-settings");
+      return s ? { ...DEFAULT_GUIDE_SETTINGS, ...JSON.parse(s) } : DEFAULT_GUIDE_SETTINGS;
+    } catch { return DEFAULT_GUIDE_SETTINGS; }
+  });
+
   const [savedPages, setSavedPages] = useState(() => getSavedPageNumbers());
 
   const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
-
   const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
+
+  // Persist guide settings whenever they change
+  useEffect(() => {
+    localStorage.setItem("quran-guide-settings", JSON.stringify(guideSettings));
+  }, [guideSettings]);
+
+  // ── pendingAutoGen: set before a page switch so the next onImageLoad knows ──
+  // to generate guides for the incoming page.
+  const pendingAutoGenRef = useRef(false);
 
   // ── on mount: load saved data for the initial page ───────────────────────────
   useEffect(() => {
@@ -44,10 +84,20 @@ export default function App() {
       setXGuides(saved.xGuides ?? []);
       bumpUidCounter(Math.max(0, ...rects.map((r) => r.uid ?? 0)));
     }
+    // Auto-generation on initial mount is intentionally NOT triggered.
+    // The user must switch pages (or click the button) to get auto-generated guides.
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── react to imageInfo update → auto-generate if flagged ────────────────────
+  useEffect(() => {
+    if (!imageInfo || !pendingAutoGenRef.current) return;
+    pendingAutoGenRef.current = false;
+    setYGuides(
+      computeLineGuides(imageInfo.displayHeight, guideSettings.topMarginPct, guideSettings.bottomMarginPct)
+    );
+  }, [imageInfo]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── auto-save on every data change ───────────────────────────────────────────
-  // Skip the very first execution (which fires with the pre-load empty state).
   const skipFirstSave = useRef(true);
   useEffect(() => {
     if (skipFirstSave.current) { skipFirstSave.current = false; return; }
@@ -58,21 +108,48 @@ export default function App() {
   // ── page change ──────────────────────────────────────────────────────────────
   const handlePageChange = (newPage) => {
     if (newPage === pageNumber) return;
-    // Save current page explicitly before switching
     savePageData(pageNumber, { rectangles, yGuides, xGuides });
 
-    const saved  = loadPageData(newPage);
-    const rects  = saved?.rectangles ?? [];
+    const saved = loadPageData(newPage);
+    const rects = saved?.rectangles ?? [];
     bumpUidCounter(Math.max(0, ...rects.map((r) => r.uid ?? 0)));
 
-    // Batch all state updates — React renders once
+    // Flag auto-generation if:
+    //   • user has enabled it
+    //   • destination is NOT a special page (1 or 2)
+    //   • that page has no previously saved guides
+    const hasNoSavedGuides = !(saved?.yGuides?.length > 0);
+    pendingAutoGenRef.current =
+      guideSettings.autoOnLoad && newPage > 2 && hasNoSavedGuides;
+
     setPageNumber(newPage);
     setRectangles(rects);
     setYGuides(saved?.yGuides ?? []);
     setXGuides(saved?.xGuides ?? []);
     setSelectedId(null);
-    setImageInfo(null); // will be re-populated by DrawingCanvas for the new image
+    setImageInfo(null); // DrawingCanvas will re-fire onImageLoad for the new image
   };
+
+  // ── guide generation handlers ─────────────────────────────────────────────────
+
+  const handleGenerateGuides = () => {
+    if (!imageInfo) return;
+    setYGuides(
+      computeLineGuides(imageInfo.displayHeight, guideSettings.topMarginPct, guideSettings.bottomMarginPct)
+    );
+  };
+
+  // Copy the Y guides from the immediately preceding page (if it has any saved)
+  const handleCopyGuidesFromPrev = () => {
+    if (pageNumber <= 1) return;
+    const prev = loadPageData(pageNumber - 1);
+    if (prev?.yGuides?.length > 0) setYGuides([...prev.yGuides]);
+  };
+
+  const handleResetYGuides = () => setYGuides([]);
+
+  const handleGuideSettingsChange = (changes) =>
+    setGuideSettings((prev) => ({ ...prev, ...changes }));
 
   // ── rectangle CRUD ───────────────────────────────────────────────────────────
 
@@ -86,9 +163,8 @@ export default function App() {
     setRectangles((prev) =>
       prev.map((r) => (r.uid === selectedId ? { ...r, ...changes } : r))
     );
-    if (changes.surah !== undefined || changes.ayah !== undefined) {
+    if (changes.surah !== undefined || changes.ayah !== undefined)
       setLastLabel((prev) => ({ ...prev, ...changes }));
-    }
   };
 
   const handleRectMove = (uid, { x, y }) =>
@@ -105,8 +181,7 @@ export default function App() {
   const handleRectDuplicate = () => {
     if (!selectedRect) return;
     const dup = {
-      ...selectedRect,
-      uid: nextUid(),
+      ...selectedRect, uid: nextUid(),
       x: selectedRect.x + 10,
       y: selectedRect.y + selectedRect.h + 4,
     };
@@ -128,7 +203,7 @@ export default function App() {
     downloadJSON(data, `page-${String(pageNumber).padStart(3, "0")}.json`);
   };
 
-  // ── guides ───────────────────────────────────────────────────────────────────
+  // ── manual guide editing ──────────────────────────────────────────────────────
 
   const handleAddGuide = (axis, val) => {
     const setter = axis === "y" ? setYGuides : setXGuides;
@@ -162,6 +237,11 @@ export default function App() {
         boxCount={rectangles.length}
         imageInfo={imageInfo}
         savedPages={savedPages}
+        guideSettings={guideSettings}
+        onGuideSettingsChange={handleGuideSettingsChange}
+        onGenerateGuides={handleGenerateGuides}
+        onCopyGuidesFromPrev={handleCopyGuidesFromPrev}
+        onResetYGuides={handleResetYGuides}
       />
 
       <main className="canvas-area">

@@ -1,16 +1,16 @@
-import { useEffect, useRef, useState } from "react"; // useRef kept for GuideList wheel listener
+import { useEffect, useRef, useState } from "react";
 
 // ─── GuideList ─────────────────────────────────────────────────────────────────
 // React's synthetic onWheel is passive — e.preventDefault() is silently ignored.
-// We attach a native non-passive listener so scroll-to-nudge actually works.
+// We attach a native non-passive listener so scroll-to-nudge works correctly.
 
 function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder }) {
-  const [input, setInput] = useState("");
-  const listRef     = useRef(null);
-  const guidesRef   = useRef(guides);
-  const onAdjustRef = useRef(onAdjust);
-  guidesRef.current   = guides;
-  onAdjustRef.current = onAdjust;
+  const [input, setInput]   = useState("");
+  const listRef             = useRef(null);
+  const guidesRef           = useRef(guides);
+  const onAdjustRef         = useRef(onAdjust);
+  guidesRef.current         = guides;
+  onAdjustRef.current       = onAdjust;
 
   useEffect(() => {
     const el = listRef.current;
@@ -74,10 +74,27 @@ export default function LeftSidebar({
   onAdjustGuide,
   boxCount,
   imageInfo,
-  savedPages,   // sorted array of page numbers with saved data
+  savedPages,
+  // Guide generation
+  guideSettings,
+  onGuideSettingsChange,
+  onGenerateGuides,
+  onCopyGuidesFromPrev,
+  onResetYGuides,
 }) {
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
+
+  const isSpecialPage = pageNumber <= 2;
+
+  // Preview: approximate display-space line height that will be generated
+  const lineHeightPreview = imageInfo
+    ? Math.round(
+        imageInfo.displayHeight *
+        (1 - guideSettings.topMarginPct / 100 - guideSettings.bottomMarginPct / 100) /
+        15
+      )
+    : null;
 
   return (
     <aside className="sidebar">
@@ -97,21 +114,11 @@ export default function LeftSidebar({
           />
         </div>
         <div className="page-nav-row">
-          <button
-            className="page-nav-btn"
-            disabled={pageNumber <= 1}
-            onClick={() => onPageChange(pageNumber - 1)}
-          >
-            ← Prev
-          </button>
+          <button className="page-nav-btn" disabled={pageNumber <= 1}
+            onClick={() => onPageChange(pageNumber - 1)}>← Prev</button>
           <span className="page-nav-label">{pageNumber} / 610</span>
-          <button
-            className="page-nav-btn"
-            disabled={pageNumber >= 610}
-            onClick={() => onPageChange(pageNumber + 1)}
-          >
-            Next →
-          </button>
+          <button className="page-nav-btn" disabled={pageNumber >= 610}
+            onClick={() => onPageChange(pageNumber + 1)}>Next →</button>
         </div>
       </div>
 
@@ -176,12 +183,94 @@ export default function LeftSidebar({
         </label>
       </div>
 
-      {/* ── Y guides ── */}
+      {/* ── Guide generation ── */}
+      <div className="sidebar-section">
+        <div className="section-title">Guide Generation</div>
+
+        {isSpecialPage && (
+          <div className="special-page-notice">
+            Pages 1–2 have a non-standard layout. Auto-generate is disabled on page load for these pages, but you can still generate manually.
+          </div>
+        )}
+
+        <label className="toggle-label">
+          <input
+            type="checkbox"
+            checked={guideSettings.autoOnLoad}
+            onChange={(e) => onGuideSettingsChange({ autoOnLoad: e.target.checked })}
+          />
+          Auto-generate on page load
+        </label>
+
+        {guideSettings.autoOnLoad && (
+          <p className="gen-note">
+            {isSpecialPage
+              ? "Skipped for pages 1–2 — use the button below."
+              : "15 guides will be created automatically for pages without saved guides."}
+          </p>
+        )}
+
+        <div className="control-group">
+          <label>Top margin %</label>
+          <input
+            type="number" min="0" max="45" step="0.5"
+            value={guideSettings.topMarginPct}
+            onChange={(e) =>
+              onGuideSettingsChange({ topMarginPct: parseFloat(e.target.value) || 0 })
+            }
+          />
+        </div>
+
+        <div className="control-group">
+          <label>Bottom margin %</label>
+          <input
+            type="number" min="0" max="45" step="0.5"
+            value={guideSettings.bottomMarginPct}
+            onChange={(e) =>
+              onGuideSettingsChange({ bottomMarginPct: parseFloat(e.target.value) || 0 })
+            }
+          />
+        </div>
+
+        {lineHeightPreview !== null && (
+          <div className="guide-gen-preview">
+            ~{lineHeightPreview}px spacing · {15} lines
+          </div>
+        )}
+
+        <button
+          className="gen-btn"
+          onClick={onGenerateGuides}
+          disabled={!imageInfo}
+          title={!imageInfo ? "Wait for image to load" : "Replace Y guides with 15 auto-generated lines"}
+        >
+          ⚡ Generate 15 Guides
+        </button>
+
+        {pageNumber > 1 && (
+          <button
+            className="gen-btn gen-btn--secondary"
+            onClick={onCopyGuidesFromPrev}
+            title={`Copy Y guides from page ${pageNumber - 1}`}
+          >
+            Copy from page {pageNumber - 1}
+          </button>
+        )}
+
+        <button
+          className="gen-btn gen-btn--danger"
+          onClick={onResetYGuides}
+        >
+          Clear Y Guides
+        </button>
+      </div>
+
+      {/* ── Y guides (manual list) ── */}
       <div className="sidebar-section">
         <div className="section-title guide-section-title">
           <span className="guide-axis-dot" style={{ background: "#38bdf8" }} />
           Y Guides
-          <span className="guide-hint">horizontal</span>
+          <span className="guide-hint">horizontal · {yGuides.length}</span>
         </div>
         <GuideList axis="y" guides={yGuides} onAdd={onAddGuide} onRemove={onRemoveGuide}
           onAdjust={onAdjustGuide} color="#38bdf8" placeholder="Y px" />
