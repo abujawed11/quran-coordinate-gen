@@ -82,6 +82,9 @@ export default function LeftSidebar({
   onGenerateGuides,
   onCopyGuidesFromPrev,
   onResetYGuides,
+  guideSnapshot,
+  onSaveGuideSnapshot,
+  onRestoreGuideSnapshot,
 }) {
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
@@ -271,6 +274,33 @@ export default function LeftSidebar({
             Copy from pg {copyFromPage}
           </button>
         </div>
+
+        {/* ── Guide snapshot ── */}
+        <div className="snapshot-row">
+          <button
+            className="gen-btn gen-btn--snap"
+            onClick={onSaveGuideSnapshot}
+            title="Save current guides as a restore point for this page"
+          >
+            Save Guides
+          </button>
+          <button
+            className="gen-btn gen-btn--snap-restore"
+            onClick={onRestoreGuideSnapshot}
+            disabled={!guideSnapshot}
+            title={guideSnapshot
+              ? `Restore guides saved at ${new Date(guideSnapshot.savedAt).toLocaleTimeString()}`
+              : "No saved snapshot yet"}
+          >
+            Restore
+          </button>
+        </div>
+        {guideSnapshot && (
+          <div className="snapshot-info">
+            Snapshot: {guideSnapshot.yGuides.length}Y + {guideSnapshot.xGuides.length}X guides
+            &nbsp;·&nbsp;{new Date(guideSnapshot.savedAt).toLocaleTimeString()}
+          </div>
+        )}
 
         <button
           className="gen-btn gen-btn--danger"

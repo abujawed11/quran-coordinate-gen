@@ -289,6 +289,47 @@ body {
   margin-bottom: 0;
 }
 
+.snapshot-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.snapshot-row .gen-btn {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.gen-btn--snap {
+  background: #164e63;
+  color: #7dd3fc;
+  border: 1px solid #0e7490;
+}
+
+.gen-btn--snap:hover:not(:disabled) {
+  background: #0e7490;
+  color: #e0f2fe;
+}
+
+.gen-btn--snap-restore {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid #0e7490;
+}
+
+.gen-btn--snap-restore:hover:not(:disabled) {
+  background: #0c4a6e;
+  color: #e0f2fe;
+}
+
+.snapshot-info {
+  font-size: 10px;
+  color: #475569;
+  font-family: monospace;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
 .gen-btn--danger {
   background: #7f1d1d;
   color: #fca5a5;

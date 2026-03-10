@@ -3,7 +3,9 @@ import { Stage, Layer, Image as KonvaImage, Rect, Text, Line, Group } from "reac
 import useImage from "use-image";
 import { normalizeRect, snapToNearestGuide, nextUid } from "../utils/rectUtils";
 
-const SNAP_THRESHOLD = 14; // px — pull-in radius while box-dragging
+const SNAP_THRESHOLD = 20;  // px — pull-in radius: how close before snap engages
+const STICKY_RELEASE = 50;  // px — release radius: how far to drag before snap breaks
+                             //      raise for stronger stickiness (must be > SNAP_THRESHOLD)
 const RH_W  = 10;          // resize handle short side (px)
 const RH_L  = 24;          // resize handle long side (px)
 
@@ -47,13 +49,21 @@ export default function DrawingCanvas({
 
   // ── snap-highlight while box is dragged ──────────────────────────────────────
   const [activeGuideY, setActiveGuideY] = useState(null);
+  const [activeGuideX, setActiveGuideX] = useState(null);
 
   // ── which guide line is being dragged (for highlight) ───────────────────────
   const [draggingGuide, setDraggingGuide] = useState(null); // { axis, index }
 
   // ── resize preview — overrides the selected rect during a handle drag ────────
   const [resizePreview, setResizePreview] = useState(null); // { uid,x,y,w,h }
-  const resizeStart = useRef(null);                         // initial rect at drag-start
+  const resizeStart  = useRef(null);   // initial rect at drag-start
+  // Sticky snap state — tracks the snapped node position per axis while dragging a box.
+  // null = not snapped; number = the node x/y that corresponds to the snapped position.
+  const snappedToY  = useRef(null);
+  const snappedToX  = useRef(null);
+  // Offset between pointer and node origin at drag-start — used to compute the true
+  // "free" position from the pointer, independent of any snapping we applied.
+  const dragOffset  = useRef({ x: 0, y: 0 });
 
   // ── image dimensions ─────────────────────────────────────────────────────────
   const dimensions = useMemo(() => {
@@ -81,10 +91,15 @@ export default function DrawingCanvas({
   if (!image) return <div className="image-loading">Loading image…</div>;
 
   // ── helpers ──────────────────────────────────────────────────────────────────
-  const applySnap = (y) =>
+  const applySnapY = (y) =>
     drawSettings.snapToLines && yGuides.length
       ? snapToNearestGuide(y, yGuides)
       : y;
+
+  const applySnapX = (x) =>
+    drawSettings.snapToLines && xGuides.length
+      ? snapToNearestGuide(x, xGuides)
+      : x;
 
   // ── drawing handlers ─────────────────────────────────────────────────────────
   const handleMouseDown = (e) => {
@@ -94,7 +109,7 @@ export default function DrawingCanvas({
 
     const pos = e.target.getStage().getPointerPosition();
     setIsDrawing(true);
-    setDraft({ x: pos.x, y: applySnap(pos.y), w: 0, h: 0 });
+    setDraft({ x: applySnapX(pos.x), y: applySnapY(pos.y), w: 0, h: 0 });
     onRectSelect(null);
   };
 
@@ -251,15 +266,13 @@ export default function DrawingCanvas({
         {/* ── X guides (vertical, orange) — draggable horizontally ── */}
         {drawSettings.showGuides &&
           xGuides.map((xPos, i) => {
+            const isSnapped  = xPos === activeGuideX;
             const isDragging = draggingGuide?.axis === "x" && draggingGuide?.index === i;
+            const active     = isSnapped || isDragging;
+            const color      = active ? "#ffffff" : "#f97316";
             return (
-              <Line
+              <Group
                 key={`x-${i}`}
-                points={[xPos, 0, xPos, dimensions.height]}
-                stroke={isDragging ? "#ffffff" : "#f97316"}
-                strokeWidth={isDragging ? 2 : 1}
-                dash={isDragging ? [] : [10, 5]}
-                opacity={isDragging ? 1 : 0.6}
                 draggable
                 dragBoundFunc={(pos) => ({ x: pos.x, y: 0 })}
                 onMouseEnter={(e) => setCursor(e, "ew-resize")}
@@ -270,7 +283,24 @@ export default function DrawingCanvas({
                   e.target.x(0);
                   setDraggingGuide(null);
                 }}
-              />
+              >
+                <Line
+                  points={[xPos, 0, xPos, dimensions.height]}
+                  stroke={color}
+                  strokeWidth={active ? 2 : 1}
+                  dash={active ? [] : [10, 5]}
+                  opacity={active ? 1 : 0.6}
+                  listening={false}
+                />
+                <Text
+                  x={xPos + 4} y={4}
+                  text={String(i + 1)}
+                  fontSize={10} fontStyle="bold"
+                  fill={color}
+                  opacity={active ? 1 : 0.75}
+                  listening={false}
+                />
+              </Group>
             );
           })}
 
@@ -281,28 +311,84 @@ export default function DrawingCanvas({
           // Use resize preview dimensions for the selected box while handle is dragged
           const disp = (resizePreview?.uid === rect.uid) ? resizePreview : rect;
 
-          const dragBoundFunc = (pos) => {
-            if (!yGuides.length) return pos;
-            for (const g of yGuides) {
-              if (Math.abs(pos.y - g) <= SNAP_THRESHOLD) return { x: pos.x, y: g };
-            }
-            return pos;
-          };
-
           return (
             <Group
               key={rect.uid}
               x={disp.x}
               y={disp.y}
               draggable
-              dragBoundFunc={dragBoundFunc}
-              onDragStart={() => onRectSelect(rect.uid)}
+              onDragStart={(e) => {
+                onRectSelect(rect.uid);
+                snappedToY.current = null;
+                snappedToX.current = null;
+                // Record pointer-to-node offset so we can recover the true free position later
+                const ptr = e.target.getStage().getPointerPosition();
+                dragOffset.current = { x: ptr.x - e.target.x(), y: ptr.y - e.target.y() };
+              }}
               onDragMove={(e) => {
-                const snapped = yGuides.find((g) => Math.abs(e.target.y() - g) <= 2) ?? null;
-                setActiveGuideY(snapped);
+                // Compute the TRUE free position from the raw pointer, not from e.target.x/y()
+                // (e.target.x/y already reflects our previous snap override, so it's useless here)
+                const ptr = e.target.getStage().getPointerPosition();
+                const pos = {
+                  x: ptr.x - dragOffset.current.x,
+                  y: ptr.y - dragOffset.current.y,
+                };
+
+                if (drawSettings.snapToLines) {
+                  // ── Y axis (horizontal guides) ──────────────────────────────
+                  if (snappedToY.current !== null) {
+                    // Already snapped — release only if raw pos drifted beyond STICKY_RELEASE
+                    if (Math.abs(pos.y - snappedToY.current) > STICKY_RELEASE) {
+                      snappedToY.current = null;
+                    }
+                  }
+                  if (snappedToY.current === null) {
+                    // Not snapped — check if any guide edge is within pull-in radius
+                    let best = SNAP_THRESHOLD + 1, snapNodeY = null;
+                    for (const g of yGuides) {
+                      const dTop = Math.abs(pos.y - g);
+                      if (dTop < best) { best = dTop; snapNodeY = g; }
+                      const dBot = Math.abs(pos.y + disp.h - g);
+                      if (dBot < best) { best = dBot; snapNodeY = g - disp.h; }
+                    }
+                    if (snapNodeY !== null) snappedToY.current = snapNodeY;
+                  }
+
+                  // ── X axis (vertical guides) ────────────────────────────────
+                  if (snappedToX.current !== null) {
+                    if (Math.abs(pos.x - snappedToX.current) > STICKY_RELEASE) {
+                      snappedToX.current = null;
+                    }
+                  }
+                  if (snappedToX.current === null) {
+                    let best = SNAP_THRESHOLD + 1, snapNodeX = null;
+                    for (const g of xGuides) {
+                      const dLeft = Math.abs(pos.x - g);
+                      if (dLeft < best) { best = dLeft; snapNodeX = g; }
+                      const dRight = Math.abs(pos.x + disp.w - g);
+                      if (dRight < best) { best = dRight; snapNodeX = g - disp.w; }
+                    }
+                    if (snapNodeX !== null) snappedToX.current = snapNodeX;
+                  }
+                }
+
+                // Apply final position
+                if (snappedToY.current !== null) e.target.y(snappedToY.current);
+                if (snappedToX.current !== null) e.target.x(snappedToX.current);
+
+                // Highlight the snapped guide lines
+                const ny = snappedToY.current !== null ? snappedToY.current : pos.y;
+                const nx = snappedToX.current !== null ? snappedToX.current : pos.x;
+                setActiveGuideY(yGuides.find((g) =>
+                  Math.abs(ny - g) <= 1 || Math.abs(ny + disp.h - g) <= 1) ?? null);
+                setActiveGuideX(xGuides.find((g) =>
+                  Math.abs(nx - g) <= 1 || Math.abs(nx + disp.w - g) <= 1) ?? null);
               }}
               onDragEnd={(e) => {
+                snappedToY.current = null;
+                snappedToX.current = null;
                 setActiveGuideY(null);
+                setActiveGuideX(null);
                 onRectMove(rect.uid, {
                   x: Math.round(e.target.x()),
                   y: Math.round(e.target.y()),

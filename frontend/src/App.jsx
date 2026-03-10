@@ -5,7 +5,7 @@ import DrawingCanvas from "./components/DrawingCanvas";
 import EditorPanel   from "./components/EditorPanel";
 import LeftSidebar   from "./components/LeftSidebar";
 import { exportGroupedJSON, downloadJSON, nextUid, bumpUidCounter } from "./utils/rectUtils";
-import { savePageData, loadPageData, getSavedPageNumbers } from "./utils/storageUtils";
+import { savePageData, loadPageData, getSavedPageNumbers, saveGuideSnapshot, loadGuideSnapshot } from "./utils/storageUtils";
 
 const DEFAULT_DRAW_SETTINGS = {
   fixedHeight:      true,
@@ -60,7 +60,9 @@ export default function App() {
     } catch { return DEFAULT_GUIDE_SETTINGS; }
   });
 
-  const [savedPages, setSavedPages] = useState(() => getSavedPageNumbers());
+  const [savedPages,      setSavedPages]      = useState(() => getSavedPageNumbers());
+  // Guide snapshot for the current page — null means no snapshot saved yet
+  const [guideSnapshot,   setGuideSnapshot]   = useState(() => loadGuideSnapshot(1));
 
   const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
   const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
@@ -127,7 +129,8 @@ export default function App() {
     setYGuides(saved?.yGuides ?? []);
     setXGuides(saved?.xGuides ?? []);
     setSelectedId(null);
-    setImageInfo(null); // DrawingCanvas will re-fire onImageLoad for the new image
+    setImageInfo(null);
+    setGuideSnapshot(loadGuideSnapshot(newPage));
   };
 
   // ── guide generation handlers ─────────────────────────────────────────────────
@@ -147,6 +150,17 @@ export default function App() {
   };
 
   const handleResetYGuides = () => setYGuides([]);
+
+  const handleSaveGuideSnapshot = () => {
+    saveGuideSnapshot(pageNumber, { yGuides, xGuides });
+    setGuideSnapshot({ yGuides: [...yGuides], xGuides: [...xGuides], savedAt: Date.now() });
+  };
+
+  const handleRestoreGuideSnapshot = () => {
+    if (!guideSnapshot) return;
+    setYGuides([...guideSnapshot.yGuides]);
+    setXGuides([...guideSnapshot.xGuides]);
+  };
 
   const handleGuideSettingsChange = (changes) =>
     setGuideSettings((prev) => ({ ...prev, ...changes }));
@@ -242,6 +256,9 @@ export default function App() {
         onGenerateGuides={handleGenerateGuides}
         onCopyGuidesFromPrev={handleCopyGuidesFromPrev}
         onResetYGuides={handleResetYGuides}
+        guideSnapshot={guideSnapshot}
+        onSaveGuideSnapshot={handleSaveGuideSnapshot}
+        onRestoreGuideSnapshot={handleRestoreGuideSnapshot}
       />
 
       <main className="canvas-area">
