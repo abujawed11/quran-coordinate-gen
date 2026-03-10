@@ -563,6 +563,85 @@ body {
   color: #555;
 }
 
+/* ── NumInput — editor panel fields ────────────────────────────────────────── */
+
+.num-input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 4px 8px;
+  transition: border-color 0.12s;
+}
+
+.num-input-row:focus-within {
+  border-color: #3b82f6;
+}
+
+.num-input-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #555;
+  min-width: 26px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.num-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-family: monospace;
+  font-weight: 600;
+  text-align: right;
+  padding: 0;
+  width: 0; /* let flex handle width */
+  /* hide browser spin arrows */
+  -moz-appearance: textfield;
+}
+
+.num-input::-webkit-outer-spin-button,
+.num-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.num-spinners {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.spinner-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 12px;
+  padding: 0;
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 3px;
+  color: #666;
+  font-size: 7px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.spinner-btn:hover {
+  background: #2d4a7a;
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
 .uid-display {
   font-size: 11px;
   color: #444;
