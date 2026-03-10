@@ -97,11 +97,13 @@ export default function App() {
   // Convert to original-image coordinates using imageInfo.scaleX/Y on export.
 
   const handleExport = () => {
-    const scale = imageInfo
-      ? { x: imageInfo.scaleX, y: imageInfo.scaleY }
-      : { x: 1, y: 1 };
-    const grouped = exportGroupedJSON(rectangles, scale);
-    downloadJSON(grouped, `page-${String(pageNumber).padStart(3, "0")}.json`);
+    const data = exportGroupedJSON(rectangles, {
+      scale:          imageInfo ? { x: imageInfo.scaleX, y: imageInfo.scaleY } : { x: 1, y: 1 },
+      page:           pageNumber,
+      originalWidth:  imageInfo?.originalWidth  ?? null,
+      originalHeight: imageInfo?.originalHeight ?? null,
+    });
+    downloadJSON(data, `page-${String(pageNumber).padStart(3, "0")}.json`);
   };
 
   // ── guides ───────────────────────────────────────────────────────────────────

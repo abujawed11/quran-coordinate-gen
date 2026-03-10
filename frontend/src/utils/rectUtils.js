@@ -31,19 +31,23 @@ export function snapToNearestGuide(y, guides) {
 // convert to original-image coordinates before export.
 // Pass scale = { x: 1, y: 1 } (or omit) to export raw display coordinates.
 
-export function exportGroupedJSON(rectangles, scale = { x: 1, y: 1 }) {
-  const grouped = {};
+export function exportGroupedJSON(rectangles, { scale = { x: 1, y: 1 }, page = null, originalWidth = null, originalHeight = null } = {}) {
+  const ayahs = {};
   for (const r of rectangles) {
     const key = `${r.surah}:${r.ayah}`;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push({
+    if (!ayahs[key]) ayahs[key] = [];
+    ayahs[key].push({
       x: Math.round(r.x * scale.x),
       y: Math.round(r.y * scale.y),
       w: Math.round(r.w * scale.x),
       h: Math.round(r.h * scale.y),
     });
   }
-  return grouped;
+  return {
+    page,
+    image: { width: originalWidth, height: originalHeight },
+    ayahs,
+  };
 }
 
 export function downloadJSON(data, filename) {
