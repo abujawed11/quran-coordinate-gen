@@ -3,9 +3,10 @@ import { Stage, Layer, Image as KonvaImage, Rect, Text, Line, Group } from "reac
 import useImage from "use-image";
 import { normalizeRect, snapToNearestGuide, nextUid } from "../utils/rectUtils";
 
-const SNAP_THRESHOLD = 20;  // px — pull-in radius: how close before snap engages
-const STICKY_RELEASE = 50;  // px — release radius: how far to drag before snap breaks
-                             //      raise for stronger stickiness (must be > SNAP_THRESHOLD)
+const SNAP_THRESHOLD        = 20;  // box-drag: pull-in radius
+const STICKY_RELEASE        = 50;  // box-drag: release radius (raise = stickier)
+const RESIZE_SNAP_THRESHOLD = 14;  // resize handle: pull-in radius (weaker than drag)
+const RESIZE_STICKY_RELEASE = 28;  // resize handle: release radius
 const RH_W  = 10;          // resize handle short side (px)
 const RH_L  = 24;          // resize handle long side (px)
 
@@ -56,7 +57,8 @@ export default function DrawingCanvas({
 
   // ── resize preview — overrides the selected rect during a handle drag ────────
   const [resizePreview, setResizePreview] = useState(null); // { uid,x,y,w,h }
-  const resizeStart  = useRef(null);   // initial rect at drag-start
+  const resizeStart   = useRef(null);  // initial rect at drag-start
+  const resizeSnapped = useRef({ x: null, y: null }); // sticky snap state per axis during resize
   // Sticky snap state — tracks the snapped node position per axis while dragging a box.
   // null = not snapped; number = the node x/y that corresponds to the snapped position.
   const snappedToY  = useRef(null);
@@ -139,6 +141,7 @@ export default function DrawingCanvas({
 
   const startResize = (rect, which) => {
     resizeStart.current = { ...rect, which };
+    resizeSnapped.current = { x: null, y: null };
     setResizePreview({ ...rect });
     onRectSelect(rect.uid);
   };
@@ -182,23 +185,87 @@ export default function DrawingCanvas({
     if (resizePreview) onRectResize(resizePreview.uid, resizePreview);
     setResizePreview(null);
     resizeStart.current = null;
+    resizeSnapped.current = { x: null, y: null };
   };
 
-  // dragBoundFunc helpers — lock the non-resize axis using the captured start state
+  // dragBoundFunc helpers — lock the non-resize axis and snap the free axis to guides.
+  // pos is the RAW Konva-computed position (always fresh), so hysteresis works correctly here.
+
+  // right / left handles — free axis is X, locked axis is Y
   const lockY = (pos) => {
     const s = resizeStart.current;
     if (!s) return pos;
-    return { x: pos.x, y: s.y + s.h / 2 - RH_L / 2 };
+    const lockedY = s.y + s.h / 2 - RH_L / 2;
+
+    if (drawSettings.snapToLines && xGuides.length) {
+      // handle center x = pos.x + RH_W/2 — that's the rect edge being dragged
+      if (resizeSnapped.current.x !== null) {
+        if (Math.abs(pos.x - resizeSnapped.current.x) > RESIZE_STICKY_RELEASE)
+          resizeSnapped.current.x = null;
+      }
+      if (resizeSnapped.current.x === null) {
+        let best = RESIZE_SNAP_THRESHOLD + 1, snap = null;
+        for (const g of xGuides) {
+          const d = Math.abs(pos.x + RH_W / 2 - g);
+          if (d < best) { best = d; snap = g - RH_W / 2; }
+        }
+        if (snap !== null) resizeSnapped.current.x = snap;
+      }
+      if (resizeSnapped.current.x !== null)
+        return { x: resizeSnapped.current.x, y: lockedY };
+    }
+    return { x: pos.x, y: lockedY };
   };
+
+  // bottom handle — free axis is Y, locked axis is X
   const lockX = (pos) => {
     const s = resizeStart.current;
     if (!s) return pos;
-    return { x: s.x + s.w / 2 - RH_L / 2, y: pos.y };
+    const lockedX = s.x + s.w / 2 - RH_L / 2;
+
+    if (drawSettings.snapToLines && yGuides.length) {
+      // handle center y = pos.y + RH_W/2 — that's the rect bottom edge
+      if (resizeSnapped.current.y !== null) {
+        if (Math.abs(pos.y - resizeSnapped.current.y) > RESIZE_STICKY_RELEASE)
+          resizeSnapped.current.y = null;
+      }
+      if (resizeSnapped.current.y === null) {
+        let best = RESIZE_SNAP_THRESHOLD + 1, snap = null;
+        for (const g of yGuides) {
+          const d = Math.abs(pos.y + RH_W / 2 - g);
+          if (d < best) { best = d; snap = g - RH_W / 2; }
+        }
+        if (snap !== null) resizeSnapped.current.y = snap;
+      }
+      if (resizeSnapped.current.y !== null)
+        return { x: lockedX, y: resizeSnapped.current.y };
+    }
+    return { x: lockedX, y: pos.y };
   };
+
+  // top handle — free axis is Y (x movement is ignored by moveResize)
   const lockYTop = (pos) => {
     const s = resizeStart.current;
     if (!s) return pos;
-    return { x: pos.x, y: pos.y }; // top handle: free vertical, lock horizontal
+
+    if (drawSettings.snapToLines && yGuides.length) {
+      // handle center y = pos.y + RH_W/2 — that's the rect top edge
+      if (resizeSnapped.current.y !== null) {
+        if (Math.abs(pos.y - resizeSnapped.current.y) > RESIZE_STICKY_RELEASE)
+          resizeSnapped.current.y = null;
+      }
+      if (resizeSnapped.current.y === null) {
+        let best = RESIZE_SNAP_THRESHOLD + 1, snap = null;
+        for (const g of yGuides) {
+          const d = Math.abs(pos.y + RH_W / 2 - g);
+          if (d < best) { best = d; snap = g - RH_W / 2; }
+        }
+        if (snap !== null) resizeSnapped.current.y = snap;
+      }
+      if (resizeSnapped.current.y !== null)
+        return { x: pos.x, y: resizeSnapped.current.y };
+    }
+    return { x: pos.x, y: pos.y };
   };
 
   // The rect dimensions used for rendering the selected box and handles
