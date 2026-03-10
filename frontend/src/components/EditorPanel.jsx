@@ -71,65 +71,57 @@ export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, on
     <aside className="editor-panel">
       <h2>Properties</h2>
 
-      {count === 0 && (
-        <p className="no-selection">Click a box to edit it.</p>
-      )}
+      <div className="panel-content">
+        {count === 0 && (
+          <p className="no-selection">Click a box to edit it.</p>
+        )}
 
-      {count === 1 && (
-        <>
-          <div className="uid-display">id: {rects[0].uid}</div>
+        {count === 1 && (
+          <>
+            <div className="uid-display">id: {rects[0].uid}</div>
 
-          <div className="section-title">Ayah</div>
-          <NumInput label="Surah" value={rects[0].surah} min={1} max={114}
-            onChange={(v) => onUpdate({ surah: v })} />
-          <NumInput label="Ayah"  value={rects[0].ayah}  min={1}
-            onChange={(v) => onUpdate({ ayah: v })} />
+            <div className="section-title">Ayah</div>
+            <NumInput label="Surah" value={rects[0].surah} min={1} max={114}
+              onChange={(v) => onUpdate({ surah: v })} />
+            <NumInput label="Ayah"  value={rects[0].ayah}  min={1}
+              onChange={(v) => onUpdate({ ayah: v })} />
 
-          <div className="section-title" style={{ marginTop: 10 }}>Coordinates</div>
-          <NumInput label="x" value={rects[0].x} min={0} onChange={(v) => onUpdate({ x: v })} />
-          <NumInput label="y" value={rects[0].y} min={0} onChange={(v) => onUpdate({ y: v })} />
-          <NumInput label="w" value={rects[0].w} min={1} onChange={(v) => onUpdate({ w: v })} />
-          <NumInput label="h" value={rects[0].h} min={1} onChange={(v) => onUpdate({ h: v })} />
+            <div className="section-title" style={{ marginTop: 10 }}>Coordinates</div>
+            <NumInput label="x" value={rects[0].x} min={0} onChange={(v) => onUpdate({ x: v })} />
+            <NumInput label="y" value={rects[0].y} min={0} onChange={(v) => onUpdate({ y: v })} />
+            <NumInput label="w" value={rects[0].w} min={1} onChange={(v) => onUpdate({ w: v })} />
+            <NumInput label="h" value={rects[0].h} min={1} onChange={(v) => onUpdate({ h: v })} />
 
-          <div className="btn-row">
-            <button className="action-btn dup-btn" onClick={onDuplicate}>Duplicate</button>
-            <button className="action-btn del-btn"  onClick={onDelete}>Delete</button>
-          </div>
-        </>
-      )}
+            <div className="btn-row">
+              <button className="action-btn dup-btn" onClick={onDuplicate}>Duplicate</button>
+              <button className="action-btn del-btn"  onClick={onDelete}>Delete</button>
+            </div>
+          </>
+        )}
 
-      {count > 1 && (
-        <>
-          <div className="multi-select-badge">{count} boxes selected</div>
+        {count > 1 && (
+          <>
+            <div className="multi-select-badge">{count} boxes selected</div>
 
-          <div className="section-title">Ayah — applies to all</div>
-          <NumInput
-            label="Surah"
-            value={fieldVal("surah") ?? 0}
-            mixed={isMixed("surah")}
-            min={1} max={114}
-            onChange={(v) => onUpdate({ surah: v })}
-          />
-          <NumInput
-            label="Ayah"
-            value={fieldVal("ayah") ?? 0}
-            mixed={isMixed("ayah")}
-            min={1}
-            onChange={(v) => onUpdate({ ayah: v })}
-          />
+            <div className="section-title">Ayah — applies to all</div>
+            <NumInput label="Surah" value={fieldVal("surah") ?? 0} mixed={isMixed("surah")}
+              min={1} max={114} onChange={(v) => onUpdate({ surah: v })} />
+            <NumInput label="Ayah"  value={fieldVal("ayah") ?? 0}  mixed={isMixed("ayah")}
+              min={1} onChange={(v) => onUpdate({ ayah: v })} />
 
-          <div className="section-title" style={{ marginTop: 10 }}>Coordinates — applies to all</div>
-          <NumInput label="x" value={fieldVal("x") ?? 0} mixed={isMixed("x")} min={0} onChange={(v) => onUpdate({ x: v })} />
-          <NumInput label="y" value={fieldVal("y") ?? 0} mixed={isMixed("y")} min={0} onChange={(v) => onUpdate({ y: v })} />
-          <NumInput label="w" value={fieldVal("w") ?? 0} mixed={isMixed("w")} min={1} onChange={(v) => onUpdate({ w: v })} />
-          <NumInput label="h" value={fieldVal("h") ?? 0} mixed={isMixed("h")} min={1} onChange={(v) => onUpdate({ h: v })} />
+            <div className="section-title" style={{ marginTop: 10 }}>Coordinates — applies to all</div>
+            <NumInput label="x" value={fieldVal("x") ?? 0} mixed={isMixed("x")} min={0} onChange={(v) => onUpdate({ x: v })} />
+            <NumInput label="y" value={fieldVal("y") ?? 0} mixed={isMixed("y")} min={0} onChange={(v) => onUpdate({ y: v })} />
+            <NumInput label="w" value={fieldVal("w") ?? 0} mixed={isMixed("w")} min={1} onChange={(v) => onUpdate({ w: v })} />
+            <NumInput label="h" value={fieldVal("h") ?? 0} mixed={isMixed("h")} min={1} onChange={(v) => onUpdate({ h: v })} />
 
-          <div className="btn-row">
-            <button className="action-btn dup-btn" onClick={onDuplicate}>Dup {count}</button>
-            <button className="action-btn del-btn"  onClick={onDelete}>Del {count}</button>
-          </div>
-        </>
-      )}
+            <div className="btn-row">
+              <button className="action-btn dup-btn" onClick={onDuplicate}>Dup {count}</button>
+              <button className="action-btn del-btn"  onClick={onDelete}>Del {count}</button>
+            </div>
+          </>
+        )}
+      </div>
 
       <div className="panel-footer">
         <button className="preview-btn" onClick={onPreview}>Preview JSON</button>
