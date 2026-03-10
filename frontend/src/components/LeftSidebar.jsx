@@ -50,6 +50,7 @@ function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder
         {guides.map((val, i) => (
           <div key={i} className="guide-item" data-guide-index={i}
             title="Scroll to nudge · Shift+scroll ×10">
+            <span className="guide-num">{i + 1}</span>
             <span className="guide-dot" style={{ background: color }} />
             <span className="guide-val">{axis} = {val}</span>
             <button className="guide-remove" onClick={() => onRemove(axis, i)} title="Remove">×</button>

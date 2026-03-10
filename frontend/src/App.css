@@ -401,6 +401,15 @@ body {
   background: #202020;
 }
 
+.guide-num {
+  min-width: 16px;
+  font-size: 10px;
+  font-family: monospace;
+  color: #475569;
+  text-align: right;
+  flex-shrink: 0;
+}
+
 .guide-dot {
   width: 6px;
   height: 6px;

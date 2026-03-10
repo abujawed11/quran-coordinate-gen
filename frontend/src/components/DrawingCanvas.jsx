@@ -213,14 +213,10 @@ export default function DrawingCanvas({
             const isSnapped  = yPos === activeGuideY;
             const isDragging = draggingGuide?.axis === "y" && draggingGuide?.index === i;
             const active     = isSnapped || isDragging;
+            const color      = active ? "#ffffff" : "#38bdf8";
             return (
-              <Line
+              <Group
                 key={`y-${i}`}
-                points={[0, yPos, dimensions.width, yPos]}
-                stroke={active ? "#ffffff" : "#38bdf8"}
-                strokeWidth={active ? 2 : 1}
-                dash={active ? [] : [10, 5]}
-                opacity={active ? 1 : 0.6}
                 draggable
                 dragBoundFunc={(pos) => ({ x: 0, y: pos.y })}
                 onMouseEnter={(e) => setCursor(e, "ns-resize")}
@@ -228,10 +224,27 @@ export default function DrawingCanvas({
                 onDragStart={() => setDraggingGuide({ axis: "y", index: i })}
                 onDragEnd={(e) => {
                   onGuideMove("y", i, Math.max(0, Math.round(yPos + e.target.y())));
-                  e.target.y(0); // reset node — guide position lives in points
+                  e.target.y(0);
                   setDraggingGuide(null);
                 }}
-              />
+              >
+                <Line
+                  points={[0, yPos, dimensions.width, yPos]}
+                  stroke={color}
+                  strokeWidth={active ? 2 : 1}
+                  dash={active ? [] : [10, 5]}
+                  opacity={active ? 1 : 0.6}
+                  listening={false}
+                />
+                <Text
+                  x={4} y={yPos - 12}
+                  text={String(i + 1)}
+                  fontSize={10} fontStyle="bold"
+                  fill={color}
+                  opacity={active ? 1 : 0.75}
+                  listening={false}
+                />
+              </Group>
             );
           })}
 
