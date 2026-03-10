@@ -53,7 +53,7 @@ function NumInput({ label, value, onChange, min = 0, max, mixed = false }) {
   );
 }
 
-export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, onExport, onClearAll }) {
+export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, onExport, onPreview, onClearAll }) {
   if (rects === undefined) rects = [];
 
   const count = rects.length;
@@ -132,7 +132,8 @@ export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, on
       )}
 
       <div className="panel-footer">
-        <button className="export-btn" onClick={onExport}>Export JSON</button>
+        <button className="preview-btn" onClick={onPreview}>Preview JSON</button>
+        <button className="export-btn"  onClick={onExport}>Export JSON</button>
         <button className="clear-btn"
           onClick={() => { if (window.confirm("Clear all boxes on this page?")) onClearAll(); }}>
           Clear All

@@ -218,15 +218,23 @@ export default function App() {
 
   // ── export ───────────────────────────────────────────────────────────────────
 
-  const handleExport = () => {
-    const data = exportGroupedJSON(rectangles, {
+  const buildExportData = () =>
+    exportGroupedJSON(rectangles, {
       scale:          imageInfo ? { x: imageInfo.scaleX, y: imageInfo.scaleY } : { x: 1, y: 1 },
       page:           pageNumber,
       originalWidth:  imageInfo?.originalWidth  ?? null,
       originalHeight: imageInfo?.originalHeight ?? null,
     });
-    downloadJSON(data, `page-${String(pageNumber).padStart(3, "0")}.json`);
+
+  const handleExport = () => {
+    downloadJSON(buildExportData(), `page-${String(pageNumber).padStart(3, "0")}.json`);
   };
+
+  // ── JSON preview modal ────────────────────────────────────────────────────────
+  const [previewJson, setPreviewJson] = useState(null); // null = hidden
+
+  const handlePreview = () => setPreviewJson(JSON.stringify(buildExportData(), null, 2));
+  const handlePreviewClose = () => setPreviewJson(null);
 
   // ── manual guide editing ──────────────────────────────────────────────────────
 
@@ -298,8 +306,38 @@ export default function App() {
         onDelete={handleRectDelete}
         onDuplicate={handleRectDuplicate}
         onExport={handleExport}
+        onPreview={handlePreview}
         onClearAll={handleClearAll}
       />
+
+      {previewJson !== null && (
+        <div className="json-modal-overlay" onClick={handlePreviewClose}>
+          <div className="json-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="json-modal-header">
+              <span className="json-modal-title">
+                JSON — page {pageNumber} &nbsp;·&nbsp; {rectangles.length} box{rectangles.length !== 1 ? "es" : ""}
+              </span>
+              <div className="json-modal-actions">
+                <button
+                  className="json-action-btn"
+                  onClick={() => navigator.clipboard.writeText(previewJson)}
+                  title="Copy to clipboard"
+                >
+                  Copy
+                </button>
+                <button
+                  className="json-action-btn json-action-btn--primary"
+                  onClick={() => { handleExport(); handlePreviewClose(); }}
+                >
+                  Export
+                </button>
+                <button className="json-modal-close" onClick={handlePreviewClose} title="Close">✕</button>
+              </div>
+            </div>
+            <pre className="json-modal-body">{previewJson}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
