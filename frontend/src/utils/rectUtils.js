@@ -67,3 +67,8 @@ let _uid = 1;
 export function nextUid() {
   return _uid++;
 }
+
+// Call after loading saved rectangles so new UIDs never collide with loaded ones.
+export function bumpUidCounter(maxExistingUid) {
+  if (maxExistingUid >= _uid) _uid = maxExistingUid + 1;
+}

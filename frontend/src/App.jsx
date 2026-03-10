@@ -1,10 +1,11 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
 import DrawingCanvas from "./components/DrawingCanvas";
 import EditorPanel   from "./components/EditorPanel";
 import LeftSidebar   from "./components/LeftSidebar";
-import { exportGroupedJSON, downloadJSON, nextUid } from "./utils/rectUtils";
+import { exportGroupedJSON, downloadJSON, nextUid, bumpUidCounter } from "./utils/rectUtils";
+import { savePageData, loadPageData, getSavedPageNumbers } from "./utils/storageUtils";
 
 const DEFAULT_DRAW_SETTINGS = {
   fixedHeight:      true,
@@ -18,27 +19,74 @@ export default function App() {
   const [rectangles,   setRectangles]   = useState([]);
   const [selectedId,   setSelectedId]   = useState(null);
   const [drawSettings, setDrawSettings] = useState(DEFAULT_DRAW_SETTINGS);
+  const [yGuides,      setYGuides]      = useState([]);
+  const [xGuides,      setXGuides]      = useState([]);
+  const [lastLabel,    setLastLabel]    = useState({ surah: 1, ayah: 1 });
 
-  // Guides — Y = horizontal lines, X = vertical lines
-  const [yGuides, setYGuides] = useState([]);
-  const [xGuides, setXGuides] = useState([]);
-
-  // Image scale info — populated by DrawingCanvas when each page image loads.
-  // { originalWidth, originalHeight, displayWidth, displayHeight, scaleX, scaleY }
+  // Populated by DrawingCanvas when image loads: { originalWidth, originalHeight,
+  // displayWidth, displayHeight, scaleX, scaleY }
   const [imageInfo, setImageInfo] = useState(null);
 
-  const [lastLabel, setLastLabel] = useState({ surah: 1, ayah: 1 });
+  // Uploaded images: Map<pageNumber, objectURL> — in-memory only (lost on refresh)
+  const [uploadedImages, setUploadedImages] = useState(() => new Map());
 
-  const pageImageSrc  = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
-  const selectedRect  = rectangles.find((r) => r.uid === selectedId) ?? null;
+  // Sorted list of page numbers that have saved boxes in localStorage
+  const [savedPages, setSavedPages] = useState(() => getSavedPageNumbers());
 
-  // Clear stale image info whenever the page changes; it will be re-populated
-  // as soon as DrawingCanvas fires onImageLoad for the new image.
-  const prevPageRef = useRef(pageNumber);
-  if (prevPageRef.current !== pageNumber) {
-    prevPageRef.current = pageNumber;
-    setImageInfo(null);
-  }
+  const pageImageSrc = uploadedImages.get(pageNumber)
+    ?? `/pages/${String(pageNumber).padStart(3, "0")}.png`;
+
+  const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
+
+  // ── on mount: load saved data for the initial page ───────────────────────────
+  useEffect(() => {
+    const saved = loadPageData(pageNumber);
+    if (saved) {
+      const rects = saved.rectangles ?? [];
+      setRectangles(rects);
+      setYGuides(saved.yGuides ?? []);
+      setXGuides(saved.xGuides ?? []);
+      bumpUidCounter(Math.max(0, ...rects.map((r) => r.uid ?? 0)));
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── auto-save on every data change ───────────────────────────────────────────
+  // Skip the very first execution (which fires with the pre-load empty state).
+  const skipFirstSave = useRef(true);
+  useEffect(() => {
+    if (skipFirstSave.current) { skipFirstSave.current = false; return; }
+    savePageData(pageNumber, { rectangles, yGuides, xGuides });
+    setSavedPages(getSavedPageNumbers());
+  }, [rectangles, yGuides, xGuides, pageNumber]);
+
+  // ── page change ──────────────────────────────────────────────────────────────
+  const handlePageChange = (newPage) => {
+    if (newPage === pageNumber) return;
+    // Save current page explicitly before switching
+    savePageData(pageNumber, { rectangles, yGuides, xGuides });
+
+    const saved  = loadPageData(newPage);
+    const rects  = saved?.rectangles ?? [];
+    bumpUidCounter(Math.max(0, ...rects.map((r) => r.uid ?? 0)));
+
+    // Batch all state updates — React renders once
+    setPageNumber(newPage);
+    setRectangles(rects);
+    setYGuides(saved?.yGuides ?? []);
+    setXGuides(saved?.xGuides ?? []);
+    setSelectedId(null);
+    setImageInfo(null); // will be re-populated by DrawingCanvas for the new image
+  };
+
+  // ── image upload ─────────────────────────────────────────────────────────────
+  const handleImageUpload = (file) => {
+    const prev = uploadedImages.get(pageNumber);
+    if (prev) URL.revokeObjectURL(prev);
+
+    const url = URL.createObjectURL(file);
+    setUploadedImages((m) => { const n = new Map(m); n.set(pageNumber, url); return n; });
+    setImageInfo(null); // reset so DrawingCanvas re-fires onImageLoad for new image
+  };
 
   // ── rectangle CRUD ───────────────────────────────────────────────────────────
 
@@ -57,18 +105,11 @@ export default function App() {
     }
   };
 
-  const handleRectMove = (uid, { x, y }) => {
-    setRectangles((prev) =>
-      prev.map((r) => (r.uid === uid ? { ...r, x, y } : r))
-    );
-  };
+  const handleRectMove = (uid, { x, y }) =>
+    setRectangles((prev) => prev.map((r) => (r.uid === uid ? { ...r, x, y } : r)));
 
-  // Called by resize handles — changes may include any subset of { x, y, w, h }
-  const handleRectResize = (uid, changes) => {
-    setRectangles((prev) =>
-      prev.map((r) => (r.uid === uid ? { ...r, ...changes } : r))
-    );
-  };
+  const handleRectResize = (uid, changes) =>
+    setRectangles((prev) => prev.map((r) => (r.uid === uid ? { ...r, ...changes } : r)));
 
   const handleRectDelete = () => {
     setRectangles((prev) => prev.filter((r) => r.uid !== selectedId));
@@ -87,14 +128,9 @@ export default function App() {
     setSelectedId(dup.uid);
   };
 
-  const handleClearAll = () => {
-    setRectangles([]);
-    setSelectedId(null);
-  };
+  const handleClearAll = () => { setRectangles([]); setSelectedId(null); };
 
   // ── export ───────────────────────────────────────────────────────────────────
-  // Rectangles are stored in display-canvas coordinates.
-  // Convert to original-image coordinates using imageInfo.scaleX/Y on export.
 
   const handleExport = () => {
     const data = exportGroupedJSON(rectangles, {
@@ -108,24 +144,19 @@ export default function App() {
 
   // ── guides ───────────────────────────────────────────────────────────────────
 
-  // Add a new guide (called from sidebar)
   const handleAddGuide = (axis, val) => {
     const setter = axis === "y" ? setYGuides : setXGuides;
     setter((prev) => [...prev, val].sort((a, b) => a - b));
   };
 
-  // Remove guide by index
   const handleRemoveGuide = (axis, index) => {
     const setter = axis === "y" ? setYGuides : setXGuides;
     setter((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // Adjust guide value in-place (used by: scroll wheel in sidebar, drag on canvas)
   const handleAdjustGuide = (axis, index, newVal) => {
     const setter = axis === "y" ? setYGuides : setXGuides;
-    setter((prev) =>
-      prev.map((v, i) => (i === index ? newVal : v)).sort((a, b) => a - b)
-    );
+    setter((prev) => prev.map((v, i) => (i === index ? newVal : v)).sort((a, b) => a - b));
   };
 
   // ─────────────────────────────────────────────────────────────────────────────
@@ -134,7 +165,7 @@ export default function App() {
     <div className="app-shell">
       <LeftSidebar
         pageNumber={pageNumber}
-        onPageChange={setPageNumber}
+        onPageChange={handlePageChange}
         drawSettings={drawSettings}
         onDrawSettingsChange={setDrawSettings}
         yGuides={yGuides}
@@ -144,6 +175,8 @@ export default function App() {
         onAdjustGuide={handleAdjustGuide}
         boxCount={rectangles.length}
         imageInfo={imageInfo}
+        savedPages={savedPages}
+        onImageUpload={handleImageUpload}
       />
 
       <main className="canvas-area">

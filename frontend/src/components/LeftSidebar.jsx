@@ -1,22 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 
 // ─── GuideList ─────────────────────────────────────────────────────────────────
-// Reusable guide list for either axis.
-// Scroll wheel on a guide item nudges its value ±1 (±10 with Shift).
-//
-// WHY useEffect + native listener instead of React onWheel:
-// Browsers mark React's synthetic wheel events as "passive" by default, which
-// means e.preventDefault() is silently ignored and the sidebar scrolls instead
-// of the guide value changing. Attaching the listener manually with
-// { passive: false } restores the expected behaviour.
+// React's synthetic onWheel is passive — e.preventDefault() is silently ignored.
+// We attach a native non-passive listener so scroll-to-nudge actually works.
 
 function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder }) {
   const [input, setInput] = useState("");
-  const listRef    = useRef(null);
-
-  // Keep refs so the wheel handler always reads the latest values without
-  // needing to be re-registered on every render.
-  const guidesRef  = useRef(guides);
+  const listRef     = useRef(null);
+  const guidesRef   = useRef(guides);
   const onAdjustRef = useRef(onAdjust);
   guidesRef.current   = guides;
   onAdjustRef.current = onAdjust;
@@ -24,65 +15,44 @@ function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-
-    const handleWheel = (e) => {
-      // Walk up from the actual target to find a [data-guide-index] element
+    const onWheel = (e) => {
       const item = e.target.closest("[data-guide-index]");
       if (!item) return;
-
-      e.preventDefault(); // works because listener is non-passive
-      const i    = parseInt(item.dataset.guideIndex, 10);
-      const cur  = guidesRef.current[i];
+      e.preventDefault();
+      const i   = parseInt(item.dataset.guideIndex, 10);
+      const cur = guidesRef.current[i];
       if (cur === undefined) return;
-
       const step  = e.shiftKey ? 10 : 1;
-      const delta = e.deltaY < 0 ? step : -step; // scroll-up → increase
+      const delta = e.deltaY < 0 ? step : -step;
       onAdjustRef.current(axis, i, Math.max(0, cur + delta));
     };
-
-    el.addEventListener("wheel", handleWheel, { passive: false });
-    return () => el.removeEventListener("wheel", handleWheel);
-  }, [axis]); // axis never changes per instance; stable enough
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [axis]);
 
   const handleAdd = () => {
     const val = parseInt(input, 10);
-    if (!isNaN(val) && val >= 0) {
-      onAdd(axis, val);
-      setInput("");
-    }
+    if (!isNaN(val) && val >= 0) { onAdd(axis, val); setInput(""); }
   };
 
   return (
     <>
       <div className="guide-input-row">
         <input
-          type="number"
-          placeholder={placeholder}
-          value={input}
+          type="number" placeholder={placeholder} value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleAdd()}
         />
         <button className="add-btn" onClick={handleAdd}>Add</button>
       </div>
-
       <div className="guide-list" ref={listRef}>
         {guides.length === 0 && <span className="muted">No guides yet.</span>}
         {guides.map((val, i) => (
-          <div
-            key={i}
-            className="guide-item"
-            data-guide-index={i}
-            title="Scroll to nudge · Shift+scroll ×10"
-          >
+          <div key={i} className="guide-item" data-guide-index={i}
+            title="Scroll to nudge · Shift+scroll ×10">
             <span className="guide-dot" style={{ background: color }} />
             <span className="guide-val">{axis} = {val}</span>
-            <button
-              className="guide-remove"
-              onClick={() => onRemove(axis, i)}
-              title="Remove"
-            >
-              ×
-            </button>
+            <button className="guide-remove" onClick={() => onRemove(axis, i)} title="Remove">×</button>
           </div>
         ))}
       </div>
@@ -103,16 +73,26 @@ export default function LeftSidebar({
   onRemoveGuide,
   onAdjustGuide,
   boxCount,
-  imageInfo,   // { originalWidth, originalHeight, displayWidth, displayHeight, scaleX, scaleY }
+  imageInfo,
+  savedPages,      // sorted array of page numbers with saved data
+  onImageUpload,   // (File) => void
 }) {
+  const fileInputRef = useRef(null);
+
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) onImageUpload(file);
+    e.target.value = ""; // allow re-selecting the same file
+  };
 
   return (
     <aside className="sidebar">
       <h1>Quran Coords</h1>
 
-      {/* Page */}
+      {/* ── Page & image upload ── */}
       <div className="sidebar-section">
         <div className="control-group">
           <label>Page</label>
@@ -122,9 +102,25 @@ export default function LeftSidebar({
             onChange={(e) => onPageChange(Number(e.target.value) || 1)}
           />
         </div>
+
+        {/* Hidden file input triggered by the button below */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          style={{ display: "none" }}
+          onChange={handleFileChange}
+        />
+        <button
+          className="upload-btn"
+          onClick={() => fileInputRef.current?.click()}
+          title="Upload a custom image for this page (replaces the default /pages/XXX.png)"
+        >
+          Upload Image
+        </button>
       </div>
 
-      {/* Image scale info — populated automatically when image loads */}
+      {/* ── Image scale info ── */}
       <div className="sidebar-section">
         <div className="section-title">Image Scale</div>
         {imageInfo ? (
@@ -149,7 +145,7 @@ export default function LeftSidebar({
         )}
       </div>
 
-      {/* Drawing mode */}
+      {/* ── Drawing mode ── */}
       <div className="sidebar-section">
         <div className="section-title">Drawing</div>
 
@@ -166,10 +162,7 @@ export default function LeftSidebar({
               type="number" min="10" max="500"
               value={drawSettings.fixedHeightValue}
               onChange={(e) =>
-                onDrawSettingsChange({
-                  ...drawSettings,
-                  fixedHeightValue: Number(e.target.value) || 61,
-                })
+                onDrawSettingsChange({ ...drawSettings, fixedHeightValue: Number(e.target.value) || 61 })
               }
             />
           </div>
@@ -188,41 +181,46 @@ export default function LeftSidebar({
         </label>
       </div>
 
-      {/* Y guides — horizontal lines */}
+      {/* ── Y guides ── */}
       <div className="sidebar-section">
         <div className="section-title guide-section-title">
           <span className="guide-axis-dot" style={{ background: "#38bdf8" }} />
           Y Guides
           <span className="guide-hint">horizontal</span>
         </div>
-        <GuideList
-          axis="y"
-          guides={yGuides}
-          onAdd={onAddGuide}
-          onRemove={onRemoveGuide}
-          onAdjust={onAdjustGuide}
-          color="#38bdf8"
-          placeholder="Y px"
-        />
+        <GuideList axis="y" guides={yGuides} onAdd={onAddGuide} onRemove={onRemoveGuide}
+          onAdjust={onAdjustGuide} color="#38bdf8" placeholder="Y px" />
       </div>
 
-      {/* X guides — vertical lines */}
+      {/* ── X guides ── */}
       <div className="sidebar-section">
         <div className="section-title guide-section-title">
           <span className="guide-axis-dot" style={{ background: "#f97316" }} />
           X Guides
           <span className="guide-hint">vertical</span>
         </div>
-        <GuideList
-          axis="x"
-          guides={xGuides}
-          onAdd={onAddGuide}
-          onRemove={onRemoveGuide}
-          onAdjust={onAdjustGuide}
-          color="#f97316"
-          placeholder="X px"
-        />
+        <GuideList axis="x" guides={xGuides} onAdd={onAddGuide} onRemove={onRemoveGuide}
+          onAdjust={onAdjustGuide} color="#f97316" placeholder="X px" />
       </div>
+
+      {/* ── Saved pages quick-nav ── */}
+      {savedPages.length > 0 && (
+        <div className="sidebar-section">
+          <div className="section-title">Saved Pages</div>
+          <div className="saved-pages">
+            {savedPages.map((n) => (
+              <button
+                key={n}
+                className={`page-badge ${n === pageNumber ? "page-badge--active" : ""}`}
+                onClick={() => onPageChange(n)}
+                title={`Go to page ${n}`}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="box-count">
         {boxCount} box{boxCount !== 1 ? "es" : ""}
