@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import "./App.css";
 
 import DrawingCanvas from "./components/DrawingCanvas";
@@ -23,10 +23,22 @@ export default function App() {
   const [yGuides, setYGuides] = useState([]);
   const [xGuides, setXGuides] = useState([]);
 
+  // Image scale info — populated by DrawingCanvas when each page image loads.
+  // { originalWidth, originalHeight, displayWidth, displayHeight, scaleX, scaleY }
+  const [imageInfo, setImageInfo] = useState(null);
+
   const [lastLabel, setLastLabel] = useState({ surah: 1, ayah: 1 });
 
   const pageImageSrc  = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
   const selectedRect  = rectangles.find((r) => r.uid === selectedId) ?? null;
+
+  // Clear stale image info whenever the page changes; it will be re-populated
+  // as soon as DrawingCanvas fires onImageLoad for the new image.
+  const prevPageRef = useRef(pageNumber);
+  if (prevPageRef.current !== pageNumber) {
+    prevPageRef.current = pageNumber;
+    setImageInfo(null);
+  }
 
   // ── rectangle CRUD ───────────────────────────────────────────────────────────
 
@@ -81,9 +93,14 @@ export default function App() {
   };
 
   // ── export ───────────────────────────────────────────────────────────────────
+  // Rectangles are stored in display-canvas coordinates.
+  // Convert to original-image coordinates using imageInfo.scaleX/Y on export.
 
   const handleExport = () => {
-    const grouped = exportGroupedJSON(rectangles);
+    const scale = imageInfo
+      ? { x: imageInfo.scaleX, y: imageInfo.scaleY }
+      : { x: 1, y: 1 };
+    const grouped = exportGroupedJSON(rectangles, scale);
     downloadJSON(grouped, `page-${String(pageNumber).padStart(3, "0")}.json`);
   };
 
@@ -124,6 +141,7 @@ export default function App() {
         onRemoveGuide={handleRemoveGuide}
         onAdjustGuide={handleAdjustGuide}
         boxCount={rectangles.length}
+        imageInfo={imageInfo}
       />
 
       <main className="canvas-area">
@@ -141,6 +159,7 @@ export default function App() {
             onRectMove={handleRectMove}
             onRectResize={handleRectResize}
             onGuideMove={handleAdjustGuide}
+            onImageLoad={setImageInfo}
           />
         </div>
       </main>

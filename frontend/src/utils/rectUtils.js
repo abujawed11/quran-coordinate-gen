@@ -25,13 +25,23 @@ export function snapToNearestGuide(y, guides) {
 // ─── Export helpers ───────────────────────────────────────────────────────────
 // Groups rectangle array by "surah:ayah" key.
 // Output: { "2:255": [{x,y,w,h}, ...], ... }
+//
+// scale — { x: scaleX, y: scaleY } where scale = originalDim / displayDim.
+// Rectangles are stored in display-canvas coordinates; multiply by scale to
+// convert to original-image coordinates before export.
+// Pass scale = { x: 1, y: 1 } (or omit) to export raw display coordinates.
 
-export function exportGroupedJSON(rectangles) {
+export function exportGroupedJSON(rectangles, scale = { x: 1, y: 1 }) {
   const grouped = {};
   for (const r of rectangles) {
     const key = `${r.surah}:${r.ayah}`;
     if (!grouped[key]) grouped[key] = [];
-    grouped[key].push({ x: r.x, y: r.y, w: r.w, h: r.h });
+    grouped[key].push({
+      x: Math.round(r.x * scale.x),
+      y: Math.round(r.y * scale.y),
+      w: Math.round(r.w * scale.x),
+      h: Math.round(r.h * scale.y),
+    });
   }
   return grouped;
 }

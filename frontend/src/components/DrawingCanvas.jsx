@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Stage, Layer, Image as KonvaImage, Rect, Text, Line, Group } from "react-konva";
 import useImage from "use-image";
 import { normalizeRect, snapToNearestGuide, nextUid } from "../utils/rectUtils";
@@ -21,6 +21,8 @@ function setCursor(e, cursor) {
 //   onRectCreate, onRectSelect, onRectMove
 //   onRectResize  – (uid, { x?, y?, w?, h? }) => void
 //   onGuideMove   – (axis 'x'|'y', index, newValue) => void
+//   onImageLoad   – (info) => void  fired when image resolves; info =
+//                   { originalWidth, originalHeight, displayWidth, displayHeight, scaleX, scaleY }
 
 export default function DrawingCanvas({
   src,
@@ -35,6 +37,7 @@ export default function DrawingCanvas({
   onRectMove,
   onRectResize,
   onGuideMove,
+  onImageLoad,
 }) {
   const [image] = useImage(src);
 
@@ -58,6 +61,22 @@ export default function DrawingCanvas({
     const scale = width / image.width;
     return { width, height: image.height * scale, scale };
   }, [image, width]);
+
+  // ── notify parent of original vs display dimensions whenever image changes ──
+  // Must be before the early return so hook order is always consistent.
+  useEffect(() => {
+    if (!image || !onImageLoad) return;
+    const displayW = width;
+    const displayH = Math.round(image.height * (displayW / image.width));
+    onImageLoad({
+      originalWidth:  image.width,
+      originalHeight: image.height,
+      displayWidth:   displayW,
+      displayHeight:  displayH,
+      scaleX: image.width  / displayW,   // multiply display coord → original
+      scaleY: image.height / displayH,
+    });
+  }, [image, width]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!image) return <div className="image-loading">Loading image…</div>;
 

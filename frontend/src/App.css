@@ -183,6 +183,42 @@ body {
   letter-spacing: 0;
 }
 
+/* ── Image info panel ──────────────────────────────────────────────────────── */
+
+.image-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 5px;
+  padding: 8px 10px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.info-label {
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+
+.info-val {
+  font-size: 11px;
+  color: #a3e635;
+  font-family: monospace;
+  text-align: right;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+
 .guide-item {
   display: flex;
   align-items: center;

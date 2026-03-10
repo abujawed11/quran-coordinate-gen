@@ -103,6 +103,7 @@ export default function LeftSidebar({
   onRemoveGuide,
   onAdjustGuide,
   boxCount,
+  imageInfo,   // { originalWidth, originalHeight, displayWidth, displayHeight, scaleX, scaleY }
 }) {
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
@@ -121,6 +122,31 @@ export default function LeftSidebar({
             onChange={(e) => onPageChange(Number(e.target.value) || 1)}
           />
         </div>
+      </div>
+
+      {/* Image scale info — populated automatically when image loads */}
+      <div className="sidebar-section">
+        <div className="section-title">Image Scale</div>
+        {imageInfo ? (
+          <div className="image-info">
+            <div className="info-row">
+              <span className="info-label">Original</span>
+              <span className="info-val">{imageInfo.originalWidth} × {imageInfo.originalHeight}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Display</span>
+              <span className="info-val">{imageInfo.displayWidth} × {imageInfo.displayHeight}</span>
+            </div>
+            <div className="info-row">
+              <span className="info-label">Scale</span>
+              <span className="info-val">
+                {imageInfo.scaleX.toFixed(2)} × {imageInfo.scaleY.toFixed(2)}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <span className="muted">Loading…</span>
+        )}
       </div>
 
       {/* Drawing mode */}
