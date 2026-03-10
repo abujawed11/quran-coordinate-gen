@@ -17,7 +17,7 @@ function setCursor(e, cursor) {
 // ─── DrawingCanvas ─────────────────────────────────────────────────────────────
 // Props:
 //   src, width
-//   rectangles, selectedId
+//   rectangles, selectedIds
 //   drawSettings  – { fixedHeight, fixedHeightValue, snapToLines, showGuides }
 //   yGuides       – horizontal guide Y values
 //   xGuides       – vertical guide X values
@@ -31,7 +31,7 @@ export default function DrawingCanvas({
   src,
   width,
   rectangles,
-  selectedId,
+  selectedIds,
   drawSettings,
   yGuides,
   xGuides,
@@ -112,7 +112,7 @@ export default function DrawingCanvas({
     const pos = e.target.getStage().getPointerPosition();
     setIsDrawing(true);
     setDraft({ x: applySnapX(pos.x), y: applySnapY(pos.y), w: 0, h: 0 });
-    onRectSelect(null);
+    onRectSelect(null, false);
   };
 
   const handleMouseMove = (e) => {
@@ -143,7 +143,7 @@ export default function DrawingCanvas({
     resizeStart.current = { ...rect, which };
     resizeSnapped.current = { x: null, y: null };
     setResizePreview({ ...rect });
-    onRectSelect(rect.uid);
+    onRectSelect(rect.uid, false);
   };
 
   const moveResize = (e, which) => {
@@ -269,7 +269,10 @@ export default function DrawingCanvas({
   };
 
   // The rect dimensions used for rendering the selected box and handles
-  const selectedRectObj   = rectangles.find((r) => r.uid === selectedId) ?? null;
+  // Only show resize handles when exactly 1 rect is selected
+  const selectedRectObj = selectedIds.length === 1
+    ? rectangles.find((r) => r.uid === selectedIds[0]) ?? null
+    : null;
   const selectedDisplay   = selectedRectObj
     ? (resizePreview?.uid === selectedRectObj.uid ? resizePreview : selectedRectObj)
     : null;
@@ -373,7 +376,7 @@ export default function DrawingCanvas({
 
         {/* ── rectangles ── */}
         {rectangles.map((rect) => {
-          const isSelected  = rect.uid === selectedId;
+          const isSelected  = selectedIds.includes(rect.uid);
           const color       = isSelected ? "#facc15" : "#ef4444";
           // Use resize preview dimensions for the selected box while handle is dragged
           const disp = (resizePreview?.uid === rect.uid) ? resizePreview : rect;
@@ -385,7 +388,9 @@ export default function DrawingCanvas({
               y={disp.y}
               draggable
               onDragStart={(e) => {
-                onRectSelect(rect.uid);
+                if (!selectedIds.includes(rect.uid)) {
+                  onRectSelect(rect.uid, false);
+                }
                 snappedToY.current = null;
                 snappedToX.current = null;
                 // Record pointer-to-node offset so we can recover the true free position later
@@ -461,7 +466,7 @@ export default function DrawingCanvas({
                   y: Math.round(e.target.y()),
                 });
               }}
-              onClick={() => onRectSelect(rect.uid)}
+              onClick={(e) => onRectSelect(rect.uid, e.evt.ctrlKey || e.evt.metaKey)}
             >
               <Text
                 x={2} y={-15}

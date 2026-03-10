@@ -9,8 +9,8 @@ import { savePageData, loadPageData, getSavedPageNumbers, saveGuideSnapshot, loa
 
 const DEFAULT_DRAW_SETTINGS = {
   fixedHeight:      true,
-  fixedHeightValue: 61,
-  snapToLines:      false,
+  fixedHeightValue: 81,
+  snapToLines:      true,
   showGuides:       true,
 };
 
@@ -42,7 +42,7 @@ export function computeLineGuides(displayH, topPct, bottomPct) {
 export default function App() {
   const [pageNumber,   setPageNumber]   = useState(1);
   const [rectangles,   setRectangles]   = useState([]);
-  const [selectedId,   setSelectedId]   = useState(null);
+  const [selectedIds,  setSelectedIds]  = useState([]);
   const [drawSettings, setDrawSettings] = useState(DEFAULT_DRAW_SETTINGS);
   const [yGuides,      setYGuides]      = useState([]);
   const [xGuides,      setXGuides]      = useState([]);
@@ -65,7 +65,7 @@ export default function App() {
   const [guideSnapshot,   setGuideSnapshot]   = useState(() => loadGuideSnapshot(1));
 
   const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
-  const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
+  const selectedRects = rectangles.filter((r) => selectedIds.includes(r.uid));
 
   // Persist guide settings whenever they change
   useEffect(() => {
@@ -128,7 +128,7 @@ export default function App() {
     setRectangles(rects);
     setYGuides(saved?.yGuides ?? []);
     setXGuides(saved?.xGuides ?? []);
-    setSelectedId(null);
+    setSelectedIds([]);
     setImageInfo(null);
     setGuideSnapshot(loadGuideSnapshot(newPage));
   };
@@ -171,12 +171,23 @@ export default function App() {
   const handleRectCreate = (rect) => {
     const newRect = { ...rect, surah: lastLabel.surah, ayah: lastLabel.ayah };
     setRectangles((prev) => [...prev, newRect]);
-    setSelectedId(newRect.uid);
+    setSelectedIds([newRect.uid]);
+  };
+
+  const handleRectSelect = (uid, isCtrl = false) => {
+    if (uid === null) { setSelectedIds([]); return; }
+    if (isCtrl) {
+      setSelectedIds((prev) =>
+        prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]
+      );
+    } else {
+      setSelectedIds([uid]);
+    }
   };
 
   const handleRectUpdate = (changes) => {
     setRectangles((prev) =>
-      prev.map((r) => (r.uid === selectedId ? { ...r, ...changes } : r))
+      prev.map((r) => (selectedIds.includes(r.uid) ? { ...r, ...changes } : r))
     );
     if (changes.surah !== undefined || changes.ayah !== undefined)
       setLastLabel((prev) => ({ ...prev, ...changes }));
@@ -189,22 +200,21 @@ export default function App() {
     setRectangles((prev) => prev.map((r) => (r.uid === uid ? { ...r, ...changes } : r)));
 
   const handleRectDelete = () => {
-    setRectangles((prev) => prev.filter((r) => r.uid !== selectedId));
-    setSelectedId(null);
+    setRectangles((prev) => prev.filter((r) => !selectedIds.includes(r.uid)));
+    setSelectedIds([]);
   };
 
   const handleRectDuplicate = () => {
-    if (!selectedRect) return;
-    const dup = {
-      ...selectedRect, uid: nextUid(),
-      x: selectedRect.x + 10,
-      y: selectedRect.y + selectedRect.h + 4,
-    };
-    setRectangles((prev) => [...prev, dup]);
-    setSelectedId(dup.uid);
+    const toDup = rectangles.filter((r) => selectedIds.includes(r.uid));
+    if (!toDup.length) return;
+    const dups = toDup.map((r) => ({
+      ...r, uid: nextUid(), x: r.x + 10, y: r.y + r.h + 4,
+    }));
+    setRectangles((prev) => [...prev, ...dups]);
+    setSelectedIds(dups.map((d) => d.uid));
   };
 
-  const handleClearAll = () => { setRectangles([]); setSelectedId(null); };
+  const handleClearAll = () => { setRectangles([]); setSelectedIds([]); };
 
   // ── export ───────────────────────────────────────────────────────────────────
 
@@ -268,12 +278,12 @@ export default function App() {
             src={pageImageSrc}
             width={900}
             rectangles={rectangles}
-            selectedId={selectedId}
+            selectedIds={selectedIds}
             drawSettings={drawSettings}
             yGuides={yGuides}
             xGuides={xGuides}
             onRectCreate={handleRectCreate}
-            onRectSelect={setSelectedId}
+            onRectSelect={handleRectSelect}
             onRectMove={handleRectMove}
             onRectResize={handleRectResize}
             onGuideMove={handleAdjustGuide}
@@ -283,7 +293,7 @@ export default function App() {
       </main>
 
       <EditorPanel
-        rect={selectedRect}
+        rects={selectedRects}
         onUpdate={handleRectUpdate}
         onDelete={handleRectDelete}
         onDuplicate={handleRectDuplicate}
