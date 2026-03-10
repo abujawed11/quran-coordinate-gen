@@ -83,7 +83,7 @@ export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, on
             <div className="section-title">Ayah</div>
             <NumInput label="Surah" value={rects[0].surah} min={1} max={114}
               onChange={(v) => onUpdate({ surah: v })} />
-            <NumInput label="Ayah"  value={rects[0].ayah}  min={1}
+            <NumInput label="Ayah"  value={rects[0].ayah}  min={0}
               onChange={(v) => onUpdate({ ayah: v })} />
 
             <div className="section-title" style={{ marginTop: 10 }}>Coordinates</div>
@@ -107,7 +107,7 @@ export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, on
             <NumInput label="Surah" value={fieldVal("surah") ?? 0} mixed={isMixed("surah")}
               min={1} max={114} onChange={(v) => onUpdate({ surah: v })} />
             <NumInput label="Ayah"  value={fieldVal("ayah") ?? 0}  mixed={isMixed("ayah")}
-              min={1} onChange={(v) => onUpdate({ ayah: v })} />
+              min={0} onChange={(v) => onUpdate({ ayah: v })} />
 
             <div className="section-title" style={{ marginTop: 10 }}>Coordinates — applies to all</div>
             <NumInput label="x" value={fieldVal("x") ?? 0} mixed={isMixed("x")} min={0} onChange={(v) => onUpdate({ x: v })} />

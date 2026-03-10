@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /d/react/quran/quran-front/src -type f \\\\\\( -name \"*.jsx\" -o -name \"*.js\" -o -name \"*.css\" \\\\\\) 2>/dev/null | sort)",
+      "Bash(wc -l /d/react/quran/quran-front/public/mushaf/coords/*.json | tail -1)"
+    ]
+  }
+}
