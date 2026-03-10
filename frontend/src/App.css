@@ -273,6 +273,22 @@ body {
   color: #e2e8f0;
 }
 
+.copy-guides-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.copy-guides-row input {
+  width: 58px;
+  flex-shrink: 0;
+}
+
+.copy-guides-btn {
+  flex: 1;
+  margin-bottom: 0;
+}
+
 .gen-btn--danger {
   background: #7f1d1d;
   color: #fca5a5;

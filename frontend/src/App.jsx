@@ -139,11 +139,11 @@ export default function App() {
     );
   };
 
-  // Copy the Y guides from the immediately preceding page (if it has any saved)
-  const handleCopyGuidesFromPrev = () => {
-    if (pageNumber <= 1) return;
-    const prev = loadPageData(pageNumber - 1);
-    if (prev?.yGuides?.length > 0) setYGuides([...prev.yGuides]);
+  // Copy Y guides from any saved page
+  const handleCopyGuidesFromPrev = (sourcePage) => {
+    if (sourcePage === pageNumber) return;
+    const src = loadPageData(sourcePage);
+    if (src?.yGuides?.length > 0) setYGuides([...src.yGuides]);
   };
 
   const handleResetYGuides = () => setYGuides([]);

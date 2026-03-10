@@ -87,6 +87,10 @@ export default function LeftSidebar({
 
   const isSpecialPage = pageNumber <= 2;
 
+  const [copyFromPage, setCopyFromPage] = useState(
+    pageNumber > 1 ? pageNumber - 1 : 1
+  );
+
   // Preview: approximate display-space line height that will be generated
   const lineHeightPreview = imageInfo
     ? Math.round(
@@ -247,15 +251,25 @@ export default function LeftSidebar({
           ⚡ Generate 15 Guides
         </button>
 
-        {pageNumber > 1 && (
+        <div className="copy-guides-row">
+          <input
+            type="number" min="1" max="610"
+            value={copyFromPage}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (n >= 1 && n <= 610) setCopyFromPage(n);
+            }}
+            title="Page to copy guides from"
+          />
           <button
-            className="gen-btn gen-btn--secondary"
-            onClick={onCopyGuidesFromPrev}
-            title={`Copy Y guides from page ${pageNumber - 1}`}
+            className="gen-btn gen-btn--secondary copy-guides-btn"
+            onClick={() => onCopyGuidesFromPrev(copyFromPage)}
+            disabled={copyFromPage === pageNumber}
+            title={copyFromPage === pageNumber ? "Can't copy from the current page" : `Copy Y guides from page ${copyFromPage}`}
           >
-            Copy from page {pageNumber - 1}
+            Copy from pg {copyFromPage}
           </button>
-        )}
+        </div>
 
         <button
           className="gen-btn gen-btn--danger"
