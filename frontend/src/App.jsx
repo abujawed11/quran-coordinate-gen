@@ -147,6 +147,7 @@ export default function App() {
     if (sourcePage === pageNumber) return;
     const src = loadPageData(sourcePage);
     if (src?.yGuides?.length > 0) setYGuides([...src.yGuides]);
+    if (src?.xGuides?.length > 0) setXGuides([...src.xGuides]);
   };
 
   const handleResetYGuides = () => setYGuides([]);
