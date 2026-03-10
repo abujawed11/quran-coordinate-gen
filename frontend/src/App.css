@@ -161,20 +161,57 @@ body {
   overflow-y: auto;
 }
 
+.guide-section-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.guide-axis-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.guide-hint {
+  margin-left: auto;
+  font-size: 9px;
+  color: #444;
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .guide-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 5px;
   background: #1a1a1a;
   border: 1px solid #2a2a2a;
   border-radius: 4px;
-  padding: 3px 8px;
+  padding: 3px 7px;
+  cursor: ns-resize;
+  user-select: none;
 }
 
-.guide-y {
+.guide-item:hover {
+  border-color: #3a3a3a;
+  background: #202020;
+}
+
+.guide-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.guide-val {
   font-size: 12px;
   font-family: monospace;
-  color: #38bdf8;
+  color: #ccc;
+  flex: 1;
 }
 
 .guide-remove {

@@ -6,43 +6,31 @@ import EditorPanel   from "./components/EditorPanel";
 import LeftSidebar   from "./components/LeftSidebar";
 import { exportGroupedJSON, downloadJSON, nextUid } from "./utils/rectUtils";
 
-// ─── Default drawing settings ─────────────────────────────────────────────────
 const DEFAULT_DRAW_SETTINGS = {
-  fixedHeight:      true,   // use a fixed box height instead of free drag
-  fixedHeightValue: 61,     // default line height in px (canvas coords)
-  snapToLines:      false,  // snap the box's Y to the nearest line guide
-  showGuides:       true,   // render guide lines on the canvas
+  fixedHeight:      true,
+  fixedHeightValue: 61,
+  snapToLines:      false,
+  showGuides:       true,
 };
-
-// ─── App ──────────────────────────────────────────────────────────────────────
-// Owns all state. Passes focused slices down to each child.
-//
-// Rectangle data shape:
-//   { uid, surah, ayah, x, y, w, h }
-//
-// All coordinates are canvas-space integers.
-// Original-image conversion (divide by scale) can be added in exportGroupedJSON
-// or as a post-processing step when the image dimensions are known.
 
 export default function App() {
   const [pageNumber,   setPageNumber]   = useState(1);
   const [rectangles,   setRectangles]   = useState([]);
   const [selectedId,   setSelectedId]   = useState(null);
   const [drawSettings, setDrawSettings] = useState(DEFAULT_DRAW_SETTINGS);
-  const [lineGuides,   setLineGuides]   = useState([]);
 
-  // Tracks the last-used surah/ayah so new boxes default to the same ayah.
-  // This is ideal for Quran layout: draw all lines of one ayah, then increment.
+  // Guides — Y = horizontal lines, X = vertical lines
+  const [yGuides, setYGuides] = useState([]);
+  const [xGuides, setXGuides] = useState([]);
+
   const [lastLabel, setLastLabel] = useState({ surah: 1, ayah: 1 });
 
-  const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
+  const pageImageSrc  = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
+  const selectedRect  = rectangles.find((r) => r.uid === selectedId) ?? null;
 
-  const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
-
-  // ── Rectangle CRUD ──────────────────────────────────────────────────────────
+  // ── rectangle CRUD ───────────────────────────────────────────────────────────
 
   const handleRectCreate = (rect) => {
-    // Attach the current label defaults; user can edit after drawing
     const newRect = { ...rect, surah: lastLabel.surah, ayah: lastLabel.ayah };
     setRectangles((prev) => [...prev, newRect]);
     setSelectedId(newRect.uid);
@@ -52,7 +40,6 @@ export default function App() {
     setRectangles((prev) =>
       prev.map((r) => (r.uid === selectedId ? { ...r, ...changes } : r))
     );
-    // Mirror surah/ayah changes into lastLabel so the next drawn box inherits them
     if (changes.surah !== undefined || changes.ayah !== undefined) {
       setLastLabel((prev) => ({ ...prev, ...changes }));
     }
@@ -61,6 +48,13 @@ export default function App() {
   const handleRectMove = (uid, { x, y }) => {
     setRectangles((prev) =>
       prev.map((r) => (r.uid === uid ? { ...r, x, y } : r))
+    );
+  };
+
+  // Called by resize handles — changes may include any subset of { x, y, w, h }
+  const handleRectResize = (uid, changes) => {
+    setRectangles((prev) =>
+      prev.map((r) => (r.uid === uid ? { ...r, ...changes } : r))
     );
   };
 
@@ -75,7 +69,7 @@ export default function App() {
       ...selectedRect,
       uid: nextUid(),
       x: selectedRect.x + 10,
-      y: selectedRect.y + selectedRect.h + 4, // place just below the original
+      y: selectedRect.y + selectedRect.h + 4,
     };
     setRectangles((prev) => [...prev, dup]);
     setSelectedId(dup.uid);
@@ -86,38 +80,52 @@ export default function App() {
     setSelectedId(null);
   };
 
-  // ── Export ──────────────────────────────────────────────────────────────────
+  // ── export ───────────────────────────────────────────────────────────────────
 
   const handleExport = () => {
     const grouped = exportGroupedJSON(rectangles);
     downloadJSON(grouped, `page-${String(pageNumber).padStart(3, "0")}.json`);
   };
 
-  // ── Line guides ─────────────────────────────────────────────────────────────
+  // ── guides ───────────────────────────────────────────────────────────────────
 
-  const handleAddGuide = (y) =>
-    setLineGuides((prev) => [...prev, y].sort((a, b) => a - b));
+  // Add a new guide (called from sidebar)
+  const handleAddGuide = (axis, val) => {
+    const setter = axis === "y" ? setYGuides : setXGuides;
+    setter((prev) => [...prev, val].sort((a, b) => a - b));
+  };
 
-  const handleRemoveGuide = (i) =>
-    setLineGuides((prev) => prev.filter((_, idx) => idx !== i));
+  // Remove guide by index
+  const handleRemoveGuide = (axis, index) => {
+    const setter = axis === "y" ? setYGuides : setXGuides;
+    setter((prev) => prev.filter((_, i) => i !== index));
+  };
 
-  // ────────────────────────────────────────────────────────────────────────────
+  // Adjust guide value in-place (used by: scroll wheel in sidebar, drag on canvas)
+  const handleAdjustGuide = (axis, index, newVal) => {
+    const setter = axis === "y" ? setYGuides : setXGuides;
+    setter((prev) =>
+      prev.map((v, i) => (i === index ? newVal : v)).sort((a, b) => a - b)
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="app-shell">
-      {/* Left: page controls + drawing settings + guide manager */}
       <LeftSidebar
         pageNumber={pageNumber}
         onPageChange={setPageNumber}
         drawSettings={drawSettings}
         onDrawSettingsChange={setDrawSettings}
-        lineGuides={lineGuides}
+        yGuides={yGuides}
+        xGuides={xGuides}
         onAddGuide={handleAddGuide}
         onRemoveGuide={handleRemoveGuide}
+        onAdjustGuide={handleAdjustGuide}
         boxCount={rectangles.length}
       />
 
-      {/* Center: Konva canvas */}
       <main className="canvas-area">
         <div className="canvas-wrapper">
           <DrawingCanvas
@@ -126,15 +134,17 @@ export default function App() {
             rectangles={rectangles}
             selectedId={selectedId}
             drawSettings={drawSettings}
-            lineGuides={lineGuides}
+            yGuides={yGuides}
+            xGuides={xGuides}
             onRectCreate={handleRectCreate}
             onRectSelect={setSelectedId}
             onRectMove={handleRectMove}
+            onRectResize={handleRectResize}
+            onGuideMove={handleAdjustGuide}
           />
         </div>
       </main>
 
-      {/* Right: metadata editor + export */}
       <EditorPanel
         rect={selectedRect}
         onUpdate={handleRectUpdate}
