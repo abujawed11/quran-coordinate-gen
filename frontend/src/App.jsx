@@ -27,14 +27,10 @@ export default function App() {
   // displayWidth, displayHeight, scaleX, scaleY }
   const [imageInfo, setImageInfo] = useState(null);
 
-  // Uploaded images: Map<pageNumber, objectURL> — in-memory only (lost on refresh)
-  const [uploadedImages, setUploadedImages] = useState(() => new Map());
-
   // Sorted list of page numbers that have saved boxes in localStorage
   const [savedPages, setSavedPages] = useState(() => getSavedPageNumbers());
 
-  const pageImageSrc = uploadedImages.get(pageNumber)
-    ?? `/pages/${String(pageNumber).padStart(3, "0")}.png`;
+  const pageImageSrc = `/pages/${String(pageNumber).padStart(3, "0")}.png`;
 
   const selectedRect = rectangles.find((r) => r.uid === selectedId) ?? null;
 
@@ -76,16 +72,6 @@ export default function App() {
     setXGuides(saved?.xGuides ?? []);
     setSelectedId(null);
     setImageInfo(null); // will be re-populated by DrawingCanvas for the new image
-  };
-
-  // ── image upload ─────────────────────────────────────────────────────────────
-  const handleImageUpload = (file) => {
-    const prev = uploadedImages.get(pageNumber);
-    if (prev) URL.revokeObjectURL(prev);
-
-    const url = URL.createObjectURL(file);
-    setUploadedImages((m) => { const n = new Map(m); n.set(pageNumber, url); return n; });
-    setImageInfo(null); // reset so DrawingCanvas re-fires onImageLoad for new image
   };
 
   // ── rectangle CRUD ───────────────────────────────────────────────────────────
@@ -176,7 +162,6 @@ export default function App() {
         boxCount={rectangles.length}
         imageInfo={imageInfo}
         savedPages={savedPages}
-        onImageUpload={handleImageUpload}
       />
 
       <main className="canvas-area">

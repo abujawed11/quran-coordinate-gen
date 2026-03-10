@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react"; // useRef kept for GuideList wheel listener
 
 // ─── GuideList ─────────────────────────────────────────────────────────────────
 // React's synthetic onWheel is passive — e.preventDefault() is silently ignored.
@@ -74,50 +74,45 @@ export default function LeftSidebar({
   onAdjustGuide,
   boxCount,
   imageInfo,
-  savedPages,      // sorted array of page numbers with saved data
-  onImageUpload,   // (File) => void
+  savedPages,   // sorted array of page numbers with saved data
 }) {
-  const fileInputRef = useRef(null);
-
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) onImageUpload(file);
-    e.target.value = ""; // allow re-selecting the same file
-  };
 
   return (
     <aside className="sidebar">
       <h1>Quran Coords</h1>
 
-      {/* ── Page & image upload ── */}
+      {/* ── Page navigation ── */}
       <div className="sidebar-section">
         <div className="control-group">
-          <label>Page</label>
+          <label>Page (1 – 610)</label>
           <input
             type="number" min="1" max="610"
             value={pageNumber}
-            onChange={(e) => onPageChange(Number(e.target.value) || 1)}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (n >= 1 && n <= 610) onPageChange(n);
+            }}
           />
         </div>
-
-        {/* Hidden file input triggered by the button below */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          style={{ display: "none" }}
-          onChange={handleFileChange}
-        />
-        <button
-          className="upload-btn"
-          onClick={() => fileInputRef.current?.click()}
-          title="Upload a custom image for this page (replaces the default /pages/XXX.png)"
-        >
-          Upload Image
-        </button>
+        <div className="page-nav-row">
+          <button
+            className="page-nav-btn"
+            disabled={pageNumber <= 1}
+            onClick={() => onPageChange(pageNumber - 1)}
+          >
+            ← Prev
+          </button>
+          <span className="page-nav-label">{pageNumber} / 610</span>
+          <button
+            className="page-nav-btn"
+            disabled={pageNumber >= 610}
+            onClick={() => onPageChange(pageNumber + 1)}
+          >
+            Next →
+          </button>
+        </div>
       </div>
 
       {/* ── Image scale info ── */}

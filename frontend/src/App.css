@@ -137,25 +137,46 @@ body {
   border-color: #60a5fa;
 }
 
-/* ── Upload button ─────────────────────────────────────────────────────────── */
+/* ── Page navigation row ───────────────────────────────────────────────────── */
 
-.upload-btn {
-  width: 100%;
-  padding: 7px 10px;
+.page-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.page-nav-btn {
+  flex: 1;
+  padding: 5px 4px;
   background: #1e293b;
   color: #94a3b8;
   border: 1px solid #2a3a4a;
-  border-radius: 5px;
-  font-size: 12px;
+  border-radius: 4px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  text-align: center;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
 }
 
-.upload-btn:hover {
+.page-nav-btn:hover:not(:disabled) {
   background: #273549;
   color: #e2e8f0;
+}
+
+.page-nav-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.page-nav-label {
+  font-size: 11px;
+  color: #555;
+  font-family: monospace;
+  white-space: nowrap;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 /* ── Saved pages quick-nav ─────────────────────────────────────────────────── */
