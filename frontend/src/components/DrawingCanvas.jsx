@@ -7,6 +7,7 @@ const SNAP_THRESHOLD        = 20;  // box-drag: pull-in radius
 const STICKY_RELEASE        = 50;  // box-drag: release radius (raise = stickier)
 const RESIZE_SNAP_THRESHOLD = 14;  // resize handle: pull-in radius (weaker than drag)
 const RESIZE_STICKY_RELEASE = 28;  // resize handle: release radius
+const DRAW_SNAP_THRESHOLD   = 8;   // live-draw trailing edge: pull-in radius (subtle)
 const RH_W  = 10;          // resize handle short side (px)
 const RH_L  = 24;          // resize handle long side (px)
 
@@ -118,10 +119,16 @@ export default function DrawingCanvas({
   const handleMouseMove = (e) => {
     if (!isDrawing || !draft) return;
     const pos = e.target.getStage().getPointerPosition();
+    const snappedX = drawSettings.snapToLines && xGuides.length
+      ? snapToNearestGuide(pos.x, xGuides, DRAW_SNAP_THRESHOLD)
+      : pos.x;
+    const snappedY = drawSettings.snapToLines && yGuides.length
+      ? snapToNearestGuide(pos.y, yGuides, DRAW_SNAP_THRESHOLD)
+      : pos.y;
     setDraft((prev) => ({
       ...prev,
-      w: pos.x - prev.x,
-      h: drawSettings.fixedHeight ? drawSettings.fixedHeightValue : pos.y - prev.y,
+      w: snappedX - prev.x,
+      h: drawSettings.fixedHeight ? drawSettings.fixedHeightValue : snappedY - prev.y,
     }));
   };
 

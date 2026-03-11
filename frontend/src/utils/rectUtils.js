@@ -14,12 +14,13 @@ export function normalizeRect(x, y, w, h) {
 // ─── Snap to nearest line guide ───────────────────────────────────────────────
 // Returns the Y value of the closest guide, or the original y if no guides.
 
-export function snapToNearestGuide(y, guides) {
+export function snapToNearestGuide(y, guides, threshold = Infinity) {
   if (!guides.length) return y;
-  return guides.reduce(
-    (best, g) => (Math.abs(g - y) < Math.abs(best - y) ? g : best),
+  const best = guides.reduce(
+    (b, g) => (Math.abs(g - y) < Math.abs(b - y) ? g : b),
     guides[0]
   );
+  return Math.abs(best - y) <= threshold ? best : y;
 }
 
 // ─── Export helpers ───────────────────────────────────────────────────────────
