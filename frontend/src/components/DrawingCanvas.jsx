@@ -58,6 +58,7 @@ export default function DrawingCanvas({
 
   // ── resize preview — overrides the selected rect during a handle drag ────────
   const [resizePreview, setResizePreview] = useState(null); // { uid,x,y,w,h }
+  const drawOrigin    = useRef(null);  // center-snapped mousedown position for drawing
   const resizeStart   = useRef(null);  // initial rect at drag-start
   const resizeSnapped = useRef({ x: null, y: null }); // sticky snap state per axis during resize
   // Sticky snap state — tracks the snapped node position per axis while dragging a box.
@@ -111,25 +112,35 @@ export default function DrawingCanvas({
     if (cls === "Rect" || cls === "Line" || cls === "Group") return;
 
     const pos = e.target.getStage().getPointerPosition();
+    const ox = applySnapX(pos.x), oy = applySnapY(pos.y);
+    drawOrigin.current = { x: ox, y: oy };
     setIsDrawing(true);
-    setDraft({ x: applySnapX(pos.x), y: applySnapY(pos.y), w: 0, h: 0 });
+    setDraft({ x: ox, y: oy, w: 0, h: 0 });
     onRectSelect(null, false);
   };
 
   const handleMouseMove = (e) => {
-    if (!isDrawing || !draft) return;
+    if (!isDrawing || !draft || !drawOrigin.current) return;
     const pos = e.target.getStage().getPointerPosition();
+    const H = 1; // strokeWidth(2) / 2 — outer-edge offset
+    const dirX = pos.x >= drawOrigin.current.x ? 1 : -1;
+    const dirY = pos.y >= drawOrigin.current.y ? 1 : -1;
+    // Outer-correct the origin: shift it away from the trailing direction by H
+    const originX = drawOrigin.current.x - dirX * H;
+    const originY = drawOrigin.current.y - dirY * H;
+    // Outer-correct the trailing edge: shift cursor toward guide by H before snapping
     const snappedX = drawSettings.snapToLines && xGuides.length
-      ? snapToNearestGuide(pos.x, xGuides, DRAW_SNAP_THRESHOLD)
+      ? snapToNearestGuide(pos.x + dirX * H, xGuides, DRAW_SNAP_THRESHOLD) - dirX * H
       : pos.x;
     const snappedY = drawSettings.snapToLines && yGuides.length
-      ? snapToNearestGuide(pos.y, yGuides, DRAW_SNAP_THRESHOLD)
+      ? snapToNearestGuide(pos.y + dirY * H, yGuides, DRAW_SNAP_THRESHOLD) - dirY * H
       : pos.y;
-    setDraft((prev) => ({
-      ...prev,
-      w: snappedX - prev.x,
-      h: drawSettings.fixedHeight ? drawSettings.fixedHeightValue : snappedY - prev.y,
-    }));
+    setDraft({
+      x: originX,
+      y: originY,
+      w: snappedX - originX,
+      h: drawSettings.fixedHeight ? drawSettings.fixedHeightValue : snappedY - originY,
+    });
   };
 
   const handleMouseUp = () => {
