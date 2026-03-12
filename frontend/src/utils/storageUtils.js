@@ -49,6 +49,40 @@ export function loadGuideSnapshot(pageNumber) {
   }
 }
 
+// ─── Named layouts ────────────────────────────────────────────────────────────
+// Key format: "quran-layout-<name>"
+// Value: { name, rectangles, savedAt }
+
+const LAYOUT_PREFIX = "quran-layout-";
+
+export function saveLayout(name, rectangles) {
+  try {
+    localStorage.setItem(
+      `${LAYOUT_PREFIX}${name}`,
+      JSON.stringify({ name, rectangles, savedAt: Date.now() })
+    );
+  } catch (e) {
+    console.warn("localStorage write failed:", e);
+  }
+}
+
+export function loadAllLayouts() {
+  const layouts = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (!key?.startsWith(LAYOUT_PREFIX)) continue;
+    try {
+      const data = JSON.parse(localStorage.getItem(key));
+      if (data?.name && Array.isArray(data.rectangles)) layouts.push(data);
+    } catch { /* skip corrupted */ }
+  }
+  return layouts.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function deleteLayout(name) {
+  localStorage.removeItem(`${LAYOUT_PREFIX}${name}`);
+}
+
 // ─── Full data export / import ────────────────────────────────────────────────
 
 export function exportAllData() {
@@ -58,6 +92,7 @@ export function exportAllData() {
     guideSettings: null,
     pages: {},
     guideSnaps: {},
+    layouts: {},
   };
   try {
     const gs = localStorage.getItem("quran-guide-settings");
@@ -72,6 +107,9 @@ export function exportAllData() {
       } else if (key?.startsWith(SNAP_PREFIX)) {
         const pageNum = parseInt(key.slice(SNAP_PREFIX.length), 10);
         result.guideSnaps[pageNum] = JSON.parse(localStorage.getItem(key));
+      } else if (key?.startsWith(LAYOUT_PREFIX)) {
+        const name = key.slice(LAYOUT_PREFIX.length);
+        result.layouts[name] = JSON.parse(localStorage.getItem(key));
       }
     } catch { /* skip corrupted */ }
   }
@@ -88,6 +126,9 @@ export function importAllData(data) {
   }
   for (const [pageNum, snapData] of Object.entries(data.guideSnaps ?? {})) {
     localStorage.setItem(`${SNAP_PREFIX}${pageNum}`, JSON.stringify(snapData));
+  }
+  for (const [name, layoutData] of Object.entries(data.layouts ?? {})) {
+    localStorage.setItem(`${LAYOUT_PREFIX}${name}`, JSON.stringify(layoutData));
   }
 }
 

@@ -5,7 +5,7 @@ import DrawingCanvas from "./components/DrawingCanvas";
 import EditorPanel   from "./components/EditorPanel";
 import LeftSidebar   from "./components/LeftSidebar";
 import { exportGroupedJSON, downloadJSON, nextUid, bumpUidCounter } from "./utils/rectUtils";
-import { savePageData, loadPageData, getSavedPageNumbers, saveGuideSnapshot, loadGuideSnapshot, exportAllData, importAllData } from "./utils/storageUtils";
+import { savePageData, loadPageData, getSavedPageNumbers, saveGuideSnapshot, loadGuideSnapshot, exportAllData, importAllData, saveLayout, loadAllLayouts, deleteLayout } from "./utils/storageUtils";
 
 const DEFAULT_DRAW_SETTINGS = {
   fixedHeight:      true,
@@ -61,6 +61,7 @@ export default function App() {
   });
 
   const [savedPages,      setSavedPages]      = useState(() => getSavedPageNumbers());
+  const [savedLayouts,    setSavedLayouts]    = useState(() => loadAllLayouts());
   // Guide snapshot for the current page — null means no snapshot saved yet
   const [guideSnapshot,   setGuideSnapshot]   = useState(() => loadGuideSnapshot(1));
 
@@ -182,6 +183,27 @@ export default function App() {
     if (src?.xGuides?.length > 0) setXGuides([...src.xGuides]);
   };
 
+  // ── saved layouts ─────────────────────────────────────────────────────────────
+
+  const handleSaveLayout = (name) => {
+    if (!name.trim() || !rectangles.length) return;
+    saveLayout(name.trim(), rectangles);
+    setSavedLayouts(loadAllLayouts());
+  };
+
+  const handleLoadLayout = (name) => {
+    const layout = savedLayouts.find((l) => l.name === name);
+    if (!layout) return;
+    const remapped = layout.rectangles.map((r) => ({ ...r, uid: nextUid() }));
+    setRectangles(remapped);
+    setSelectedIds([]);
+  };
+
+  const handleDeleteLayout = (name) => {
+    deleteLayout(name);
+    setSavedLayouts(loadAllLayouts());
+  };
+
   // Copy rectangles from any saved page
   const handleCopyBoxesFromPage = (sourcePage) => {
     if (sourcePage === pageNumber) return;
@@ -295,6 +317,7 @@ export default function App() {
         setXGuides(saved?.xGuides ?? []);
         setSelectedIds([]);
         setSavedPages(getSavedPageNumbers());
+        setSavedLayouts(loadAllLayouts());
         setGuideSnapshot(loadGuideSnapshot(pageNumber));
         try {
           const gs = localStorage.getItem("quran-guide-settings");
@@ -356,6 +379,10 @@ export default function App() {
         onSaveGuideSnapshot={handleSaveGuideSnapshot}
         onRestoreGuideSnapshot={handleRestoreGuideSnapshot}
         onCopyBoxesFromPage={handleCopyBoxesFromPage}
+        savedLayouts={savedLayouts}
+        onSaveLayout={handleSaveLayout}
+        onLoadLayout={handleLoadLayout}
+        onDeleteLayout={handleDeleteLayout}
         onExportSettings={handleExportSettings}
         onImportSettings={handleImportSettings}
       />

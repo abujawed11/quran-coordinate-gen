@@ -86,10 +86,15 @@ export default function LeftSidebar({
   onSaveGuideSnapshot,
   onRestoreGuideSnapshot,
   onCopyBoxesFromPage,
+  savedLayouts,
+  onSaveLayout,
+  onLoadLayout,
+  onDeleteLayout,
   onExportSettings,
   onImportSettings,
 }) {
   const importFileRef = useRef(null);
+  const [layoutName, setLayoutName] = useState("");
   const [copyBoxesFromPage, setCopyBoxesFromPage] = useState(
     pageNumber > 1 ? pageNumber - 1 : 1
   );
@@ -387,6 +392,58 @@ export default function LeftSidebar({
           </div>
         </div>
       )}
+
+      {/* ── Saved layouts ── */}
+      <div className="sidebar-section">
+        <div className="section-title">Saved Layouts</div>
+        <div className="guide-input-row">
+          <input
+            type="text"
+            placeholder="Layout name"
+            value={layoutName}
+            onChange={(e) => setLayoutName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { onSaveLayout(layoutName); setLayoutName(""); }
+            }}
+          />
+          <button
+            className="add-btn"
+            onClick={() => { onSaveLayout(layoutName); setLayoutName(""); }}
+            disabled={!layoutName.trim()}
+            title="Save current boxes as a named layout"
+          >
+            Save
+          </button>
+        </div>
+        {savedLayouts.length === 0 ? (
+          <span className="muted">No layouts saved yet.</span>
+        ) : (
+          <div className="guide-list">
+            {savedLayouts.map((layout) => (
+              <div key={layout.name} className="guide-item">
+                <span className="guide-val" style={{ flex: 1 }}>
+                  {layout.name}
+                  <span className="muted" style={{ marginLeft: 4 }}>({layout.rectangles.length})</span>
+                </span>
+                <button
+                  className="gen-btn gen-btn--secondary"
+                  style={{ padding: "1px 7px", fontSize: "0.75rem" }}
+                  onClick={() => onLoadLayout(layout.name)}
+                  title={`Load "${layout.name}" onto current page`}
+                >
+                  Load
+                </button>
+                <button
+                  className="guide-remove"
+                  onClick={() => onDeleteLayout(layout.name)}
+                  title={`Delete "${layout.name}"`}
+                >×</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="gen-note">Loading a layout replaces the current page's boxes.</p>
+      </div>
 
       {/* ── Export / Import settings ── */}
       <div className="sidebar-section">
