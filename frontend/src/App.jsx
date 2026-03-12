@@ -197,6 +197,8 @@ export default function App() {
     const remapped = layout.rectangles.map((r) => ({ ...r, uid: nextUid() }));
     setRectangles(remapped);
     setSelectedIds([]);
+    const first = layout.rectangles[0];
+    if (first) setLastLabel({ surah: first.surah, ayah: first.ayah });
   };
 
   const handleDeleteLayout = (name) => {
