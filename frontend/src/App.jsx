@@ -282,6 +282,20 @@ export default function App() {
 
   const handleClearAll = () => { setRectangles([]); setSelectedIds([]); };
 
+  // ── split box ─────────────────────────────────────────────────────────────────
+
+  const handleSplitBox = (leftPct) => {
+    if (selectedIds.length !== 1) return;
+    const orig = rectangles.find((r) => r.uid === selectedIds[0]);
+    if (!orig) return;
+    const leftW  = Math.round(orig.w * (leftPct / 100));
+    const rightW = orig.w - leftW;
+    const left  = { ...orig, uid: nextUid(), w: leftW };
+    const right = { ...orig, uid: nextUid(), x: orig.x + leftW, w: rightW };
+    setRectangles((prev) => prev.map((r) => r.uid === orig.uid ? left : r).concat(right));
+    setSelectedIds([left.uid, right.uid]);
+  };
+
   // ── export ───────────────────────────────────────────────────────────────────
 
   const buildExportData = () =>
@@ -380,6 +394,8 @@ export default function App() {
         guideSnapshot={guideSnapshot}
         onSaveGuideSnapshot={handleSaveGuideSnapshot}
         onRestoreGuideSnapshot={handleRestoreGuideSnapshot}
+        onSplitBox={handleSplitBox}
+        splitEnabled={selectedIds.length === 1}
         onCopyBoxesFromPage={handleCopyBoxesFromPage}
         savedLayouts={savedLayouts}
         onSaveLayout={handleSaveLayout}

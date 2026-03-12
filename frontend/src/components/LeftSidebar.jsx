@@ -85,6 +85,8 @@ export default function LeftSidebar({
   guideSnapshot,
   onSaveGuideSnapshot,
   onRestoreGuideSnapshot,
+  onSplitBox,
+  splitEnabled,
   onCopyBoxesFromPage,
   savedLayouts,
   onSaveLayout,
@@ -95,6 +97,7 @@ export default function LeftSidebar({
 }) {
   const importFileRef = useRef(null);
   const [layoutName, setLayoutName] = useState("");
+  const [splitLeftPct, setSplitLeftPct] = useState(50);
   const [copyBoxesFromPage, setCopyBoxesFromPage] = useState(
     pageNumber > 1 ? pageNumber - 1 : 1
   );
@@ -202,6 +205,34 @@ export default function LeftSidebar({
             onChange={() => toggle("showGuides")} />
           Show Guides
         </label>
+      </div>
+
+      {/* ── Split box ── */}
+      <div className="sidebar-section">
+        <div className="section-title">Split Box</div>
+        <div className="control-group">
+          <label>Left / Right %</label>
+          <div className="split-ratio-row">
+            <input
+              type="number" min="1" max="99"
+              value={splitLeftPct}
+              onChange={(e) => {
+                const n = Math.min(99, Math.max(1, Number(e.target.value)));
+                setSplitLeftPct(n);
+              }}
+            />
+            <span className="split-ratio-preview">{splitLeftPct} / {100 - splitLeftPct}</span>
+          </div>
+        </div>
+        <button
+          className="gen-btn"
+          onClick={() => onSplitBox(splitLeftPct)}
+          disabled={!splitEnabled}
+          title={splitEnabled ? "Split selected box into two" : "Select exactly one box to split"}
+        >
+          Split Box
+        </button>
+        {!splitEnabled && <p className="gen-note">Select exactly 1 box to enable.</p>}
       </div>
 
       {/* ── Guide generation ── */}
