@@ -182,6 +182,16 @@ export default function App() {
     if (src?.xGuides?.length > 0) setXGuides([...src.xGuides]);
   };
 
+  // Copy rectangles from any saved page
+  const handleCopyBoxesFromPage = (sourcePage) => {
+    if (sourcePage === pageNumber) return;
+    const src = loadPageData(sourcePage);
+    if (!src?.rectangles?.length) return;
+    const remapped = src.rectangles.map((r) => ({ ...r, uid: nextUid() }));
+    setRectangles(remapped);
+    setSelectedIds([]);
+  };
+
   const handleResetYGuides = () => setYGuides([]);
 
   const handleSaveGuideSnapshot = () => {
@@ -345,6 +355,7 @@ export default function App() {
         guideSnapshot={guideSnapshot}
         onSaveGuideSnapshot={handleSaveGuideSnapshot}
         onRestoreGuideSnapshot={handleRestoreGuideSnapshot}
+        onCopyBoxesFromPage={handleCopyBoxesFromPage}
         onExportSettings={handleExportSettings}
         onImportSettings={handleImportSettings}
       />

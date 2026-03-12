@@ -85,10 +85,14 @@ export default function LeftSidebar({
   guideSnapshot,
   onSaveGuideSnapshot,
   onRestoreGuideSnapshot,
+  onCopyBoxesFromPage,
   onExportSettings,
   onImportSettings,
 }) {
   const importFileRef = useRef(null);
+  const [copyBoxesFromPage, setCopyBoxesFromPage] = useState(
+    pageNumber > 1 ? pageNumber - 1 : 1
+  );
 
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
@@ -334,6 +338,35 @@ export default function LeftSidebar({
         </div>
         <GuideList axis="x" guides={xGuides} onAdd={onAddGuide} onRemove={onRemoveGuide}
           onAdjust={onAdjustGuide} color="#f97316" placeholder="X px" />
+      </div>
+
+      {/* ── Copy boxes from page ── */}
+      <div className="sidebar-section">
+        <div className="section-title">Copy Boxes</div>
+        <div className="copy-guides-row">
+          <input
+            type="number" min="1" max="610"
+            value={copyBoxesFromPage}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              if (n >= 1 && n <= 610) setCopyBoxesFromPage(n);
+            }}
+            title="Page to copy boxes from"
+          />
+          <button
+            className="gen-btn gen-btn--secondary copy-guides-btn"
+            onClick={() => onCopyBoxesFromPage(copyBoxesFromPage)}
+            disabled={copyBoxesFromPage === pageNumber}
+            title={
+              copyBoxesFromPage === pageNumber
+                ? "Can't copy from the current page"
+                : `Replace current boxes with boxes from page ${copyBoxesFromPage}`
+            }
+          >
+            Copy from pg {copyBoxesFromPage}
+          </button>
+        </div>
+        <p className="gen-note">Replaces current page boxes with boxes from the selected page.</p>
       </div>
 
       {/* ── Saved pages quick-nav ── */}
