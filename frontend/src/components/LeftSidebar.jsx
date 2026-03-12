@@ -85,7 +85,11 @@ export default function LeftSidebar({
   guideSnapshot,
   onSaveGuideSnapshot,
   onRestoreGuideSnapshot,
+  onExportSettings,
+  onImportSettings,
 }) {
+  const importFileRef = useRef(null);
+
   const toggle = (key) =>
     onDrawSettingsChange({ ...drawSettings, [key]: !drawSettings[key] });
 
@@ -350,6 +354,34 @@ export default function LeftSidebar({
           </div>
         </div>
       )}
+
+      {/* ── Export / Import settings ── */}
+      <div className="sidebar-section">
+        <div className="section-title">Settings Backup</div>
+        <button className="gen-btn" onClick={onExportSettings} title="Download all pages, guides, and settings as a JSON file">
+          Export All Settings
+        </button>
+        <button
+          className="gen-btn gen-btn--secondary"
+          onClick={() => importFileRef.current?.click()}
+          title="Restore from a previously exported settings file"
+        >
+          Import Settings
+        </button>
+        <input
+          ref={importFileRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: "none" }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) {
+              onImportSettings(file);
+              e.target.value = "";
+            }
+          }}
+        />
+      </div>
 
       <div className="box-count">
         {boxCount} box{boxCount !== 1 ? "es" : ""}

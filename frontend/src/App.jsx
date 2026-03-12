@@ -5,7 +5,7 @@ import DrawingCanvas from "./components/DrawingCanvas";
 import EditorPanel   from "./components/EditorPanel";
 import LeftSidebar   from "./components/LeftSidebar";
 import { exportGroupedJSON, downloadJSON, nextUid, bumpUidCounter } from "./utils/rectUtils";
-import { savePageData, loadPageData, getSavedPageNumbers, saveGuideSnapshot, loadGuideSnapshot } from "./utils/storageUtils";
+import { savePageData, loadPageData, getSavedPageNumbers, saveGuideSnapshot, loadGuideSnapshot, exportAllData, importAllData } from "./utils/storageUtils";
 
 const DEFAULT_DRAW_SETTINGS = {
   fixedHeight:      true,
@@ -262,6 +262,41 @@ export default function App() {
     downloadJSON(buildExportData(), `page-${String(pageNumber).padStart(3, "0")}.json`);
   };
 
+  // ── settings export / import ─────────────────────────────────────────────────
+
+  const handleExportSettings = () => {
+    const data = exportAllData();
+    const date = new Date().toISOString().slice(0, 10);
+    downloadJSON(data, `quran-settings-${date}.json`);
+  };
+
+  const handleImportSettings = (file) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        importAllData(data);
+        // Refresh current page state from newly imported data
+        const saved = loadPageData(pageNumber);
+        const rects = saved?.rectangles ?? [];
+        bumpUidCounter(Math.max(0, ...rects.map((r) => r.uid ?? 0)));
+        setRectangles(rects);
+        setYGuides(saved?.yGuides ?? []);
+        setXGuides(saved?.xGuides ?? []);
+        setSelectedIds([]);
+        setSavedPages(getSavedPageNumbers());
+        setGuideSnapshot(loadGuideSnapshot(pageNumber));
+        try {
+          const gs = localStorage.getItem("quran-guide-settings");
+          if (gs) setGuideSettings({ ...DEFAULT_GUIDE_SETTINGS, ...JSON.parse(gs) });
+        } catch { /* ignore */ }
+      } catch {
+        alert("Import failed: invalid or corrupted settings file.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
   // ── JSON preview modal ────────────────────────────────────────────────────────
   const [previewJson, setPreviewJson] = useState(null); // null = hidden
 
@@ -310,6 +345,8 @@ export default function App() {
         guideSnapshot={guideSnapshot}
         onSaveGuideSnapshot={handleSaveGuideSnapshot}
         onRestoreGuideSnapshot={handleRestoreGuideSnapshot}
+        onExportSettings={handleExportSettings}
+        onImportSettings={handleImportSettings}
       />
 
       <main className="canvas-area">

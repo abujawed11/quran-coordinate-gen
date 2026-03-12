@@ -49,6 +49,48 @@ export function loadGuideSnapshot(pageNumber) {
   }
 }
 
+// ─── Full data export / import ────────────────────────────────────────────────
+
+export function exportAllData() {
+  const result = {
+    version: 1,
+    exportedAt: Date.now(),
+    guideSettings: null,
+    pages: {},
+    guideSnaps: {},
+  };
+  try {
+    const gs = localStorage.getItem("quran-guide-settings");
+    result.guideSettings = gs ? JSON.parse(gs) : null;
+  } catch { /* ignore */ }
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    try {
+      if (key?.startsWith(PREFIX)) {
+        const pageNum = parseInt(key.slice(PREFIX.length), 10);
+        result.pages[pageNum] = JSON.parse(localStorage.getItem(key));
+      } else if (key?.startsWith(SNAP_PREFIX)) {
+        const pageNum = parseInt(key.slice(SNAP_PREFIX.length), 10);
+        result.guideSnaps[pageNum] = JSON.parse(localStorage.getItem(key));
+      }
+    } catch { /* skip corrupted */ }
+  }
+  return result;
+}
+
+export function importAllData(data) {
+  if (!data || typeof data !== "object") throw new Error("Invalid data");
+  if (data.guideSettings) {
+    localStorage.setItem("quran-guide-settings", JSON.stringify(data.guideSettings));
+  }
+  for (const [pageNum, pageData] of Object.entries(data.pages ?? {})) {
+    localStorage.setItem(`${PREFIX}${pageNum}`, JSON.stringify(pageData));
+  }
+  for (const [pageNum, snapData] of Object.entries(data.guideSnaps ?? {})) {
+    localStorage.setItem(`${SNAP_PREFIX}${pageNum}`, JSON.stringify(snapData));
+  }
+}
+
 // Returns sorted list of page numbers that have at least one saved box.
 export function getSavedPageNumbers() {
   const pages = [];
