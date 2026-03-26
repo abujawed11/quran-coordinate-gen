@@ -282,6 +282,31 @@ export default function App() {
 
   const handleClearAll = () => { setRectangles([]); setSelectedIds([]); };
 
+  // ── bulk apply ────────────────────────────────────────────────────────────
+
+  const handleBulkSetSurah = (surah) => {
+    setRectangles((prev) => prev.map((r) => ({ ...r, surah })));
+  };
+
+  const handleBulkApplyAyahPattern = (startAyah, counts) => {
+    // Sort boxes top-to-bottom (then left-to-right for same Y)
+    const sorted = [...rectangles].sort((a, b) => a.y !== b.y ? a.y - b.y : b.x - a.x);
+    const ayahMap = {};
+    let boxIndex = 0;
+    let currentAyah = startAyah;
+    for (const count of counts) {
+      for (let i = 0; i < count; i++) {
+        if (boxIndex >= sorted.length) break;
+        ayahMap[sorted[boxIndex].uid] = currentAyah;
+        boxIndex++;
+      }
+      currentAyah++;
+    }
+    setRectangles((prev) =>
+      prev.map((r) => ayahMap[r.uid] !== undefined ? { ...r, ayah: ayahMap[r.uid] } : r)
+    );
+  };
+
   // ── split box ─────────────────────────────────────────────────────────────────
 
   const handleSplitBox = (leftPct) => {
@@ -427,12 +452,15 @@ export default function App() {
 
       <EditorPanel
         rects={selectedRects}
+        allRects={rectangles}
         onUpdate={handleRectUpdate}
         onDelete={handleRectDelete}
         onDuplicate={handleRectDuplicate}
         onExport={handleExport}
         onPreview={handlePreview}
         onClearAll={handleClearAll}
+        onBulkSetSurah={handleBulkSetSurah}
+        onBulkApplyAyahPattern={handleBulkApplyAyahPattern}
       />
 
       {previewJson !== null && (

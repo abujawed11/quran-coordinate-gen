@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function NumInput({ label, value, onChange, min = 0, max, mixed = false }) {
   const [draft, setDraft] = useState(mixed ? "" : String(value));
@@ -53,10 +53,33 @@ function NumInput({ label, value, onChange, min = 0, max, mixed = false }) {
   );
 }
 
-export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, onExport, onPreview, onClearAll }) {
+export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDuplicate, onExport, onPreview, onClearAll, onBulkSetSurah, onBulkApplyAyahPattern }) {
   if (rects === undefined) rects = [];
+  if (allRects === undefined) allRects = [];
 
   const count = rects.length;
+  const allCount = allRects.length;
+
+  // ── Bulk apply state ──────────────────────────────────────────────────────
+  const [bulkSurah, setBulkSurah] = useState(1);
+  const [bulkStartAyah, setBulkStartAyah] = useState(1);
+  const [patternStr, setPatternStr] = useState("");
+  const patternRef = useRef(null);
+
+  const parsedCounts = patternStr
+    .split(",")
+    .map((s) => parseInt(s.trim(), 10))
+    .filter((n) => !isNaN(n) && n > 0);
+  const patternTotal = parsedCounts.reduce((a, b) => a + b, 0);
+
+  const patternPreview = patternStr.trim() === "" ? null
+    : patternTotal === 0 ? "invalid pattern"
+    : patternTotal > allCount ? `covers ${patternTotal} (only ${allCount} boxes)`
+    : patternTotal < allCount ? `covers ${patternTotal} of ${allCount} boxes`
+    : `covers all ${allCount} boxes`;
+
+  const patternOk = parsedCounts.length > 0 && patternTotal > 0 && allCount > 0;
+  const patternExact = patternOk && patternTotal === allCount;
 
   // Helper: get display value for a field — null if mixed across selection
   const fieldVal = (key) => {
@@ -72,6 +95,49 @@ export default function EditorPanel({ rects, onUpdate, onDelete, onDuplicate, on
       <h2>Properties</h2>
 
       <div className="panel-content">
+
+        {/* ── Bulk Apply (always visible) ─────────────────────────────── */}
+        <div className="bulk-section">
+          <div className="section-title" style={{ color: "#a78bfa" }}>Bulk — this page</div>
+
+          {/* Surah */}
+          <div className="bulk-field-label">Surah</div>
+          <NumInput label="S" value={bulkSurah} min={1} max={114} onChange={setBulkSurah} />
+          <button
+            className="bulk-apply-btn"
+            disabled={allCount === 0}
+            onClick={() => onBulkSetSurah(bulkSurah)}
+          >
+            Apply Surah to all {allCount > 0 ? `(${allCount})` : ""}
+          </button>
+
+          {/* Ayah pattern */}
+          <div className="bulk-field-label" style={{ marginTop: 4 }}>Ayah pattern</div>
+          <NumInput label="Start" value={bulkStartAyah} min={0} onChange={setBulkStartAyah} />
+          <input
+            ref={patternRef}
+            className="pattern-input"
+            type="text"
+            placeholder="e.g. 3,4,2,1"
+            value={patternStr}
+            onChange={(e) => setPatternStr(e.target.value)}
+          />
+          {patternPreview && (
+            <div className={`pattern-preview ${patternExact ? "pattern-preview--ok" : patternOk ? "pattern-preview--warn" : "pattern-preview--err"}`}>
+              {patternPreview}
+            </div>
+          )}
+          <button
+            className="bulk-apply-btn bulk-apply-btn--ayah"
+            disabled={!patternOk || allCount === 0}
+            onClick={() => onBulkApplyAyahPattern(bulkStartAyah, parsedCounts)}
+          >
+            Apply Ayah pattern
+          </button>
+        </div>
+
+        <div className="bulk-divider" />
+
         {count === 0 && (
           <p className="no-selection">Click a box to edit it.</p>
         )}
