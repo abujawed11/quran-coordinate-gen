@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-function NumInput({ label, value, onChange, min = 0, max, mixed = false }) {
+function NumInput({ label, value, onChange, min = 0, max, mixed = false, disabled = false }) {
   const [draft, setDraft] = useState(mixed ? "" : String(value));
 
   useEffect(() => {
@@ -36,6 +36,7 @@ function NumInput({ label, value, onChange, min = 0, max, mixed = false }) {
         max={max}
         value={draft}
         placeholder={mixed ? "mixed" : undefined}
+        disabled={disabled}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => commit()}
         onKeyDown={(e) => {
@@ -46,8 +47,8 @@ function NumInput({ label, value, onChange, min = 0, max, mixed = false }) {
         }}
       />
       <div className="num-spinners">
-        <button className="spinner-btn" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); step(+1); }}>▲</button>
-        <button className="spinner-btn" tabIndex={-1} onMouseDown={(e) => { e.preventDefault(); step(-1); }}>▼</button>
+        <button className="spinner-btn" tabIndex={-1} disabled={disabled} onMouseDown={(e) => { e.preventDefault(); step(+1); }}>▲</button>
+        <button className="spinner-btn" tabIndex={-1} disabled={disabled} onMouseDown={(e) => { e.preventDefault(); step(-1); }}>▼</button>
       </div>
     </div>
   );
@@ -59,6 +60,9 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
 
   const count = rects.length;
   const allCount = allRects.length;
+
+  // ── Lock state ────────────────────────────────────────────────────────────
+  const [locked, setLocked] = useState(false);
 
   // ── Bulk apply state ──────────────────────────────────────────────────────
   const [bulkSurah, setBulkSurah] = useState(1);
@@ -92,7 +96,16 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
 
   return (
     <aside className="editor-panel">
-      <h2>Properties</h2>
+      <div className="editor-panel-header">
+        <h2>Properties</h2>
+        <button
+          className={`lock-btn ${locked ? "lock-btn--on" : ""}`}
+          title={locked ? "Unlock panel" : "Lock panel (prevent accidental edits)"}
+          onClick={() => setLocked((v) => !v)}
+        >
+          {locked ? "🔒" : "🔓"}
+        </button>
+      </div>
 
       <div className="panel-content">
 
@@ -102,10 +115,10 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
 
           {/* Surah */}
           <div className="bulk-field-label">Surah</div>
-          <NumInput label="S" value={bulkSurah} min={1} max={114} onChange={setBulkSurah} />
+          <NumInput label="S" value={bulkSurah} min={1} max={114} onChange={setBulkSurah} disabled={locked} />
           <button
             className="bulk-apply-btn"
-            disabled={allCount === 0}
+            disabled={locked || allCount === 0}
             onClick={() => onBulkSetSurah(bulkSurah)}
           >
             Apply Surah to all {allCount > 0 ? `(${allCount})` : ""}
@@ -113,13 +126,14 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
 
           {/* Ayah pattern */}
           <div className="bulk-field-label" style={{ marginTop: 4 }}>Ayah pattern</div>
-          <NumInput label="Start" value={bulkStartAyah} min={0} onChange={setBulkStartAyah} />
+          <NumInput label="Start" value={bulkStartAyah} min={0} onChange={setBulkStartAyah} disabled={locked} />
           <input
             ref={patternRef}
             className="pattern-input"
             type="text"
             placeholder="e.g. 3,4,2,1"
             value={patternStr}
+            disabled={locked}
             onChange={(e) => setPatternStr(e.target.value)}
           />
           {patternPreview && (
@@ -129,7 +143,7 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
           )}
           <button
             className="bulk-apply-btn bulk-apply-btn--ayah"
-            disabled={!patternOk || allCount === 0}
+            disabled={locked || !patternOk || allCount === 0}
             onClick={() => onBulkApplyAyahPattern(bulkStartAyah, parsedCounts)}
           >
             Apply Ayah pattern
@@ -148,19 +162,19 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
 
             <div className="section-title">Ayah</div>
             <NumInput label="Surah" value={rects[0].surah} min={1} max={114}
-              onChange={(v) => onUpdate({ surah: v })} />
+              onChange={(v) => onUpdate({ surah: v })} disabled={locked} />
             <NumInput label="Ayah"  value={rects[0].ayah}  min={0}
-              onChange={(v) => onUpdate({ ayah: v })} />
+              onChange={(v) => onUpdate({ ayah: v })} disabled={locked} />
 
             <div className="section-title" style={{ marginTop: 10 }}>Coordinates</div>
-            <NumInput label="x" value={rects[0].x} min={0} onChange={(v) => onUpdate({ x: v })} />
-            <NumInput label="y" value={rects[0].y} min={0} onChange={(v) => onUpdate({ y: v })} />
-            <NumInput label="w" value={rects[0].w} min={1} onChange={(v) => onUpdate({ w: v })} />
-            <NumInput label="h" value={rects[0].h} min={1} onChange={(v) => onUpdate({ h: v })} />
+            <NumInput label="x" value={rects[0].x} min={0} onChange={(v) => onUpdate({ x: v })} disabled={locked} />
+            <NumInput label="y" value={rects[0].y} min={0} onChange={(v) => onUpdate({ y: v })} disabled={locked} />
+            <NumInput label="w" value={rects[0].w} min={1} onChange={(v) => onUpdate({ w: v })} disabled={locked} />
+            <NumInput label="h" value={rects[0].h} min={1} onChange={(v) => onUpdate({ h: v })} disabled={locked} />
 
             <div className="btn-row">
-              <button className="action-btn dup-btn" onClick={onDuplicate}>Duplicate</button>
-              <button className="action-btn del-btn"  onClick={onDelete}>Delete</button>
+              <button className="action-btn dup-btn" disabled={locked} onClick={onDuplicate}>Duplicate</button>
+              <button className="action-btn del-btn"  disabled={locked} onClick={onDelete}>Delete</button>
             </div>
           </>
         )}
@@ -171,19 +185,19 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
 
             <div className="section-title">Ayah — applies to all</div>
             <NumInput label="Surah" value={fieldVal("surah") ?? 0} mixed={isMixed("surah")}
-              min={1} max={114} onChange={(v) => onUpdate({ surah: v })} />
+              min={1} max={114} onChange={(v) => onUpdate({ surah: v })} disabled={locked} />
             <NumInput label="Ayah"  value={fieldVal("ayah") ?? 0}  mixed={isMixed("ayah")}
-              min={0} onChange={(v) => onUpdate({ ayah: v })} />
+              min={0} onChange={(v) => onUpdate({ ayah: v })} disabled={locked} />
 
             <div className="section-title" style={{ marginTop: 10 }}>Coordinates — applies to all</div>
-            <NumInput label="x" value={fieldVal("x") ?? 0} mixed={isMixed("x")} min={0} onChange={(v) => onUpdate({ x: v })} />
-            <NumInput label="y" value={fieldVal("y") ?? 0} mixed={isMixed("y")} min={0} onChange={(v) => onUpdate({ y: v })} />
-            <NumInput label="w" value={fieldVal("w") ?? 0} mixed={isMixed("w")} min={1} onChange={(v) => onUpdate({ w: v })} />
-            <NumInput label="h" value={fieldVal("h") ?? 0} mixed={isMixed("h")} min={1} onChange={(v) => onUpdate({ h: v })} />
+            <NumInput label="x" value={fieldVal("x") ?? 0} mixed={isMixed("x")} min={0} onChange={(v) => onUpdate({ x: v })} disabled={locked} />
+            <NumInput label="y" value={fieldVal("y") ?? 0} mixed={isMixed("y")} min={0} onChange={(v) => onUpdate({ y: v })} disabled={locked} />
+            <NumInput label="w" value={fieldVal("w") ?? 0} mixed={isMixed("w")} min={1} onChange={(v) => onUpdate({ w: v })} disabled={locked} />
+            <NumInput label="h" value={fieldVal("h") ?? 0} mixed={isMixed("h")} min={1} onChange={(v) => onUpdate({ h: v })} disabled={locked} />
 
             <div className="btn-row">
-              <button className="action-btn dup-btn" onClick={onDuplicate}>Dup {count}</button>
-              <button className="action-btn del-btn"  onClick={onDelete}>Del {count}</button>
+              <button className="action-btn dup-btn" disabled={locked} onClick={onDuplicate}>Dup {count}</button>
+              <button className="action-btn del-btn"  disabled={locked} onClick={onDelete}>Del {count}</button>
             </div>
           </>
         )}
@@ -192,7 +206,7 @@ export default function EditorPanel({ rects, allRects, onUpdate, onDelete, onDup
       <div className="panel-footer">
         <button className="preview-btn" onClick={onPreview}>Preview JSON</button>
         <button className="export-btn"  onClick={onExport}>Export JSON</button>
-        <button className="clear-btn"
+        <button className="clear-btn" disabled={locked}
           onClick={() => { if (window.confirm("Clear all boxes on this page?")) onClearAll(); }}>
           Clear All
         </button>

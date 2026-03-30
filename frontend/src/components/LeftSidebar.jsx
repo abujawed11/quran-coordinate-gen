@@ -4,13 +4,15 @@ import { useEffect, useRef, useState } from "react";
 // React's synthetic onWheel is passive — e.preventDefault() is silently ignored.
 // We attach a native non-passive listener so scroll-to-nudge works correctly.
 
-function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder }) {
+function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder, locked }) {
   const [input, setInput]   = useState("");
   const listRef             = useRef(null);
   const guidesRef           = useRef(guides);
   const onAdjustRef         = useRef(onAdjust);
+  const lockedRef           = useRef(locked);
   guidesRef.current         = guides;
   onAdjustRef.current       = onAdjust;
+  lockedRef.current         = locked;
 
   useEffect(() => {
     const el = listRef.current;
@@ -19,6 +21,7 @@ function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder
       const item = e.target.closest("[data-guide-index]");
       if (!item) return;
       e.preventDefault();
+      if (lockedRef.current) return;
       const i   = parseInt(item.dataset.guideIndex, 10);
       const cur = guidesRef.current[i];
       if (cur === undefined) return;
@@ -40,20 +43,21 @@ function GuideList({ axis, guides, onAdd, onRemove, onAdjust, color, placeholder
       <div className="guide-input-row">
         <input
           type="number" placeholder={placeholder} value={input}
+          disabled={locked}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          onKeyDown={(e) => e.key === "Enter" && !locked && handleAdd()}
         />
-        <button className="add-btn" onClick={handleAdd}>Add</button>
+        <button className="add-btn" onClick={handleAdd} disabled={locked}>Add</button>
       </div>
       <div className="guide-list" ref={listRef}>
         {guides.length === 0 && <span className="muted">No guides yet.</span>}
         {guides.map((val, i) => (
           <div key={i} className="guide-item" data-guide-index={i}
-            title="Scroll to nudge · Shift+scroll ×10">
+            title={locked ? "Panel is locked" : "Scroll to nudge · Shift+scroll ×10"}>
             <span className="guide-num">{i + 1}</span>
             <span className="guide-dot" style={{ background: color }} />
             <span className="guide-val">{axis} = {val}</span>
-            <button className="guide-remove" onClick={() => onRemove(axis, i)} title="Remove">×</button>
+            <button className="guide-remove" disabled={locked} onClick={() => onRemove(axis, i)} title="Remove">×</button>
           </div>
         ))}
       </div>
@@ -96,6 +100,7 @@ export default function LeftSidebar({
   onImportSettings,
 }) {
   const importFileRef = useRef(null);
+  const [locked, setLocked] = useState(false);
   const [layoutName, setLayoutName] = useState("");
   const [splitLeftPct, setSplitLeftPct] = useState(50);
   const [copyBoxesFromPage, setCopyBoxesFromPage] = useState(
@@ -122,7 +127,16 @@ export default function LeftSidebar({
 
   return (
     <aside className="sidebar">
-      <h1>Quran Coords</h1>
+      <div className="sidebar-header">
+        <h1>Quran Coords</h1>
+        <button
+          className={`lock-btn ${locked ? "lock-btn--on" : ""}`}
+          title={locked ? "Unlock sidebar" : "Lock sidebar (prevent accidental edits)"}
+          onClick={() => setLocked((v) => !v)}
+        >
+          {locked ? "🔒" : "🔓"}
+        </button>
+      </div>
 
       {/* ── Page navigation ── */}
       <div className="sidebar-section">
@@ -131,6 +145,7 @@ export default function LeftSidebar({
           <input
             type="number" min="1" max="610"
             value={pageNumber}
+            disabled={locked}
             onChange={(e) => {
               const n = Number(e.target.value);
               if (n >= 1 && n <= 610) onPageChange(n);
@@ -138,10 +153,12 @@ export default function LeftSidebar({
           />
         </div>
         <div className="page-nav-row">
-          <button className="page-nav-btn" disabled={pageNumber <= 1}
+          <button className="page-nav-btn" 
+          // disabled={locked || pageNumber <= 1}
             onClick={() => onPageChange(pageNumber - 1)}>← Prev</button>
           <span className="page-nav-label">{pageNumber} / 610</span>
-          <button className="page-nav-btn" disabled={pageNumber >= 610}
+          <button className="page-nav-btn" 
+          // disabled={locked || pageNumber >= 610}
             onClick={() => onPageChange(pageNumber + 1)}>Next →</button>
         </div>
       </div>
@@ -177,6 +194,7 @@ export default function LeftSidebar({
 
         <label className="toggle-label">
           <input type="checkbox" checked={drawSettings.fixedHeight}
+            disabled={locked}
             onChange={() => toggle("fixedHeight")} />
           Fixed Height
         </label>
@@ -187,6 +205,7 @@ export default function LeftSidebar({
             <input
               type="number" min="10" max="500"
               value={drawSettings.fixedHeightValue}
+              disabled={locked}
               onChange={(e) =>
                 onDrawSettingsChange({ ...drawSettings, fixedHeightValue: Number(e.target.value) || 61 })
               }
@@ -196,12 +215,14 @@ export default function LeftSidebar({
 
         <label className="toggle-label">
           <input type="checkbox" checked={drawSettings.snapToLines}
+            disabled={locked}
             onChange={() => toggle("snapToLines")} />
           Snap to Lines
         </label>
 
         <label className="toggle-label">
           <input type="checkbox" checked={drawSettings.showGuides}
+            disabled={locked}
             onChange={() => toggle("showGuides")} />
           Show Guides
         </label>
@@ -216,6 +237,7 @@ export default function LeftSidebar({
             <input
               type="number" min="1" max="99"
               value={splitLeftPct}
+              disabled={locked}
               onChange={(e) => {
                 const n = Math.min(99, Math.max(1, Number(e.target.value)));
                 setSplitLeftPct(n);
@@ -227,8 +249,8 @@ export default function LeftSidebar({
         <button
           className="gen-btn"
           onClick={() => onSplitBox(splitLeftPct)}
-          disabled={!splitEnabled}
-          title={splitEnabled ? "Split selected box into two" : "Select exactly one box to split"}
+          disabled={locked || !splitEnabled}
+          title={locked ? "Panel is locked" : splitEnabled ? "Split selected box into two" : "Select exactly one box to split"}
         >
           Split Box
         </button>
@@ -249,6 +271,7 @@ export default function LeftSidebar({
           <input
             type="checkbox"
             checked={guideSettings.autoOnLoad}
+            disabled={locked}
             onChange={(e) => onGuideSettingsChange({ autoOnLoad: e.target.checked })}
           />
           Auto-generate on page load
@@ -267,6 +290,7 @@ export default function LeftSidebar({
           <input
             type="number" min="0" max="45" step="0.5"
             value={guideSettings.topMarginPct}
+            disabled={locked}
             onChange={(e) =>
               onGuideSettingsChange({ topMarginPct: parseFloat(e.target.value) || 0 })
             }
@@ -278,6 +302,7 @@ export default function LeftSidebar({
           <input
             type="number" min="0" max="45" step="0.5"
             value={guideSettings.bottomMarginPct}
+            disabled={locked}
             onChange={(e) =>
               onGuideSettingsChange({ bottomMarginPct: parseFloat(e.target.value) || 0 })
             }
@@ -293,8 +318,8 @@ export default function LeftSidebar({
         <button
           className="gen-btn"
           onClick={onGenerateGuides}
-          disabled={!imageInfo}
-          title={!imageInfo ? "Wait for image to load" : "Replace Y guides with 15 auto-generated lines"}
+          disabled={locked || !imageInfo}
+          title={locked ? "Panel is locked" : !imageInfo ? "Wait for image to load" : "Replace Y guides with 15 auto-generated lines"}
         >
           ⚡ Generate 15 Guides
         </button>
@@ -303,6 +328,7 @@ export default function LeftSidebar({
           <input
             type="number" min="1" max="610"
             value={copyFromPage}
+            // disabled={locked}
             onChange={(e) => {
               const n = Number(e.target.value);
               if (n >= 1 && n <= 610) setCopyFromPage(n);
@@ -312,8 +338,9 @@ export default function LeftSidebar({
           <button
             className="gen-btn gen-btn--secondary copy-guides-btn"
             onClick={() => onCopyGuidesFromPrev(copyFromPage)}
-            disabled={copyFromPage === pageNumber}
-            title={copyFromPage === pageNumber ? "Can't copy from the current page" : `Copy Y guides from page ${copyFromPage}`}
+            // disabled={locked || copyFromPage === pageNumber}
+            title={`Copy Y guides from page ${copyFromPage}`}
+            // title={locked ? "Panel is locked" : copyFromPage === pageNumber ? "Can't copy from the current page" : `Copy Y guides from page ${copyFromPage}`}
           >
             Copy from pg {copyFromPage}
           </button>
@@ -324,14 +351,15 @@ export default function LeftSidebar({
           <button
             className="gen-btn gen-btn--snap"
             onClick={onSaveGuideSnapshot}
-            title="Save current guides as a restore point for this page"
+            disabled={locked}
+            title={locked ? "Panel is locked" : "Save current guides as a restore point for this page"}
           >
             Save Guides
           </button>
           <button
             className="gen-btn gen-btn--snap-restore"
             onClick={onRestoreGuideSnapshot}
-            disabled={!guideSnapshot}
+            disabled={locked || !guideSnapshot}
             title={guideSnapshot
               ? `Restore guides saved at ${new Date(guideSnapshot.savedAt).toLocaleTimeString()}`
               : "No saved snapshot yet"}
@@ -349,6 +377,7 @@ export default function LeftSidebar({
         <button
           className="gen-btn gen-btn--danger"
           onClick={onResetYGuides}
+          disabled={locked}
         >
           Clear Y Guides
         </button>
@@ -362,7 +391,7 @@ export default function LeftSidebar({
           <span className="guide-hint">horizontal · {yGuides.length}</span>
         </div>
         <GuideList axis="y" guides={yGuides} onAdd={onAddGuide} onRemove={onRemoveGuide}
-          onAdjust={onAdjustGuide} color="#38bdf8" placeholder="Y px" />
+          onAdjust={onAdjustGuide} color="#38bdf8" placeholder="Y px" locked={locked} />
       </div>
 
       {/* ── X guides ── */}
@@ -373,7 +402,7 @@ export default function LeftSidebar({
           <span className="guide-hint">vertical</span>
         </div>
         <GuideList axis="x" guides={xGuides} onAdd={onAddGuide} onRemove={onRemoveGuide}
-          onAdjust={onAdjustGuide} color="#f97316" placeholder="X px" />
+          onAdjust={onAdjustGuide} color="#f97316" placeholder="X px" locked={locked} />
       </div>
 
       {/* ── Copy boxes from page ── */}
@@ -383,6 +412,7 @@ export default function LeftSidebar({
           <input
             type="number" min="1" max="610"
             value={copyBoxesFromPage}
+            disabled={locked}
             onChange={(e) => {
               const n = Number(e.target.value);
               if (n >= 1 && n <= 610) setCopyBoxesFromPage(n);
@@ -392,7 +422,7 @@ export default function LeftSidebar({
           <button
             className="gen-btn gen-btn--secondary copy-guides-btn"
             onClick={() => onCopyBoxesFromPage(copyBoxesFromPage)}
-            disabled={copyBoxesFromPage === pageNumber}
+            disabled={locked || copyBoxesFromPage === pageNumber}
             title={
               copyBoxesFromPage === pageNumber
                 ? "Can't copy from the current page"
@@ -432,16 +462,17 @@ export default function LeftSidebar({
             type="text"
             placeholder="Layout name"
             value={layoutName}
+            disabled={locked}
             onChange={(e) => setLayoutName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter") { onSaveLayout(layoutName); setLayoutName(""); }
+              if (e.key === "Enter" && !locked) { onSaveLayout(layoutName); setLayoutName(""); }
             }}
           />
           <button
             className="add-btn"
             onClick={() => { onSaveLayout(layoutName); setLayoutName(""); }}
-            disabled={!layoutName.trim()}
-            title="Save current boxes as a named layout"
+            disabled={locked || !layoutName.trim()}
+            title={locked ? "Panel is locked" : "Save current boxes as a named layout"}
           >
             Save
           </button>
@@ -459,15 +490,18 @@ export default function LeftSidebar({
                 <button
                   className="gen-btn gen-btn--secondary"
                   style={{ padding: "1px 7px", fontSize: "0.75rem" }}
+                  // disabled={locked}
                   onClick={() => onLoadLayout(layout.name)}
                   title={`Load "${layout.name}" onto current page`}
+                  // title={locked ? "Panel is locked" : `Load "${layout.name}" onto current page`}
                 >
                   Load
                 </button>
                 <button
                   className="guide-remove"
+                  disabled={locked}
                   onClick={() => onDeleteLayout(layout.name)}
-                  title={`Delete "${layout.name}"`}
+                  title={locked ? "Panel is locked" : `Delete "${layout.name}"`}
                 >×</button>
               </div>
             ))}
@@ -479,13 +513,14 @@ export default function LeftSidebar({
       {/* ── Export / Import settings ── */}
       <div className="sidebar-section">
         <div className="section-title">Settings Backup</div>
-        <button className="gen-btn" onClick={onExportSettings} title="Download all pages, guides, and settings as a JSON file">
+        <button className="gen-btn" onClick={onExportSettings} disabled={locked} title={locked ? "Panel is locked" : "Download all pages, guides, and settings as a JSON file"}>
           Export All Settings
         </button>
         <button
           className="gen-btn gen-btn--secondary"
           onClick={() => importFileRef.current?.click()}
-          title="Restore from a previously exported settings file"
+          disabled={locked}
+          title={locked ? "Panel is locked" : "Restore from a previously exported settings file"}
         >
           Import Settings
         </button>
